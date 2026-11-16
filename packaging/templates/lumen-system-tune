@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="/usr/share/lumen-os/system/apply-system-tuning.sh"
+if [[ ! -f "$SCRIPT_PATH" ]]; then
+    echo "Error: System tuning script not found at $SCRIPT_PATH" >&2
+    exit 1
+fi
+exec bash "$SCRIPT_PATH" "$@"

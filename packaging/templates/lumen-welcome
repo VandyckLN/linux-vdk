@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure Lumen OS shared python modules are accessible
+export PYTHONPATH="/usr/share/lumen-os:${PYTHONPATH:-}"
+
+exec /usr/bin/python3 -m welcome.main "$@"

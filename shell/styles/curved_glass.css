@@ -1,0 +1,246 @@
+/* Curved Glass Shell - GTK4 Stylesheet
+ * Emulates frosted curved glass with specular borders and crisp dark-mode legibility.
+ */
+
+window.curved-shell-window {
+    background-color: transparent;
+}
+
+window.curved-shell-preview {
+    background-image: linear-gradient(135deg, #1b1e26 0%, #2b2f3a 42%, #13161c 100%);
+}
+
+/* Main floating curved glass container */
+.glass-shell {
+    background-color: rgba(24, 27, 34, 0.56);
+    background-image: linear-gradient(
+        155deg,
+        rgba(255, 255, 255, 0.16) 0%,
+        rgba(255, 255, 255, 0.05) 38%,
+        rgba(12, 14, 18, 0.25) 100%
+    );
+    border: 1.5px solid rgba(255, 255, 255, 0.34);
+    border-radius: 26px;
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+    color: #f3f5f8;
+    padding: 12px;
+    transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-shell.compact {
+    border-radius: 22px;
+    padding: 10px 8px;
+}
+
+.glass-shell.horizontal {
+    border-radius: 24px;
+    padding: 8px 14px;
+}
+
+.glass-drawer {
+    background-color: rgba(24, 27, 34, 0.72);
+    background-image: linear-gradient(
+        155deg,
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.04) 45%,
+        rgba(10, 12, 16, 0.32) 100%
+    );
+    border: 1.5px solid rgba(255, 255, 255, 0.30);
+    border-radius: 24px;
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.52),
+        inset 0 1px 0 rgba(255, 255, 255, 0.40);
+    color: #f3f5f8;
+    padding: 14px;
+}
+
+/* Header & Brand */
+.brand-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.icon-btn {
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    color: #e6ebf2;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px;
+    transition: all 150ms ease;
+}
+
+.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.36);
+}
+
+/* Profile card */
+.profile-avatar {
+    background-image: linear-gradient(135deg, #748dff 0%, #a970ff 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.profile-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.profile-badge {
+    background-color: rgba(255, 255, 255, 0.88);
+    border-radius: 6px;
+    color: #191d24;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    padding: 2px 6px;
+}
+
+.profile-subtitle {
+    font-size: 11px;
+    color: rgba(235, 240, 248, 0.68);
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    color: rgba(235, 240, 248, 0.45);
+    margin-top: 6px;
+    margin-bottom: 2px;
+}
+
+/* Navigation items */
+.nav-item {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: rgba(240, 244, 250, 0.80);
+    min-height: 36px;
+    padding: 6px 10px;
+    transition: all 150ms ease;
+}
+
+.nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+.nav-item.active {
+    background-color: rgba(255, 255, 255, 0.90);
+    border-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    color: #181c24;
+    font-weight: 600;
+}
+
+.nav-item-compact {
+    min-width: 38px;
+    min-height: 38px;
+    padding: 0;
+    border-radius: 12px;
+}
+
+.sub-item {
+    background-color: transparent;
+    border-radius: 10px;
+    color: rgba(235, 240, 248, 0.68);
+    font-size: 12px;
+    min-height: 30px;
+    padding: 4px 10px;
+}
+
+.sub-item:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+}
+
+.sub-item.selected {
+    background-color: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Notice / System Card (bottom glass card like the video) */
+.notice-card {
+    background-color: rgba(255, 255, 255, 0.10);
+    background-image: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(130, 152, 255, 0.14) 55%,
+        rgba(255, 255, 255, 0.06) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 16px;
+    padding: 12px;
+}
+
+.notice-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.notice-title {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    color: #ffffff;
+}
+
+.notice-detail {
+    font-size: 11px;
+    color: rgba(240, 244, 250, 0.80);
+}
+
+.notice-compact-badge {
+    background-image: linear-gradient(145deg, rgba(132, 156, 255, 0.45), rgba(182, 128, 255, 0.35));
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 38px;
+    min-height: 44px;
+}
+
+.glass-divider {
+    background-color: rgba(255, 255, 255, 0.14);
+    min-height: 1px;
+    margin: 4px 0;
+}
+
+.glass-divider-vertical {
+    background-color: rgba(255, 255, 255, 0.16);
+    min-width: 1px;
+    margin: 0 4px;
+}
+
+.orientation-pill {
+    background-color: rgba(120, 148, 255, 0.22);
+    border: 1px solid rgba(154, 178, 255, 0.45);
+    border-radius: 999px;
+    color: #eef2ff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+}
+
+.orientation-pill:hover {
+    background-color: rgba(120, 148, 255, 0.36);
+}

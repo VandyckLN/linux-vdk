@@ -1,0 +1,5 @@
+shell/* usr/share/lumen-os/shell/
+config/shell.default.json usr/share/lumen-os/config/
+config/shell.default.json etc/lumen/
+packaging/templates/lumen-shell usr/bin/
+packaging/templates/lumen-shell.desktop usr/share/applications/

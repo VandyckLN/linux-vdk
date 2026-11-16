@@ -1,0 +1,7 @@
+lumen-desktop (1.0.0-1ubuntu1) resolute; urgency=medium
+
+  * Initial release of Lumen OS Curved Glass desktop packages.
+  * Packaged lumen-shell, lumen-compositor, lumen-system, lumen-dev-stack, lumen-welcome.
+  * Added metapackage lumen-desktop and offline repository generation.
+
+ -- Lumen OS Developers <contact@lumenos.dev>  Mon, 16 Nov 2026 14:00:00 +0000

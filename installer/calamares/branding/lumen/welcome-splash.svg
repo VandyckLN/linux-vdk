@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 320" width="600" height="320">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d0f14"/>
+      <stop offset="50%" stop-color="#141822"/>
+      <stop offset="100%" stop-color="#1a1e27"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#748dff"/>
+      <stop offset="100%" stop-color="#a970ff"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="320" rx="26" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="2"/>
+  <path d="M -20 220 C 140 110, 300 270, 480 140 C 530 110, 580 130, 620 110" stroke="rgba(255,255,255,0.10)" stroke-width="42" fill="none"/>
+  <path d="M -10 100 C 180 180, 360 50, 560 190" stroke="rgba(116,141,255,0.16)" stroke-width="28" fill="none"/>
+  <g transform="translate(60, 95)">
+    <path d="M 65 10 C 66 38, 92 64, 120 65 C 92 66, 66 92, 65 120 C 64 92, 38 66, 10 65 C 38 64, 64 38, 65 10 Z" fill="url(#starGrad)"/>
+    <circle cx="65" cy="65" r="11" fill="#ffffff" opacity="0.95"/>
+  </g>
+  <text x="220" y="130" font-family="Inter, Ubuntu, sans-serif" font-size="34" font-weight="800" fill="#ffffff" letter-spacing="2">LUMEN OS</text>
+  <text x="220" y="165" font-family="Inter, Ubuntu, sans-serif" font-size="16" font-weight="600" fill="#8da2ff">26.04 LTS • Resolute Raccoon</text>
+  <text x="220" y="198" font-family="Inter, Ubuntu, sans-serif" font-size="13" fill="#94a3b8">Curved Glass Shell &amp; Developer Edition</text>
+</svg>

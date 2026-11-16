@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Lumen OS Shell
+GenericName=Desktop Shell
+Comment=Curved Glass desktop panel and widget system
+Exec=/usr/bin/lumen-shell
+TryExec=/usr/bin/lumen-shell
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=System;Utility;
+StartupNotify=false

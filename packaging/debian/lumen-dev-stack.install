@@ -1,0 +1,12 @@
+dev-stack/packages.list usr/share/lumen-os/dev-stack/
+dev-stack/setup-dev-env.sh usr/share/lumen-os/dev-stack/
+dev-stack/starship/starship.toml usr/share/lumen-os/dev-stack/starship/
+dev-stack/tmux/tmux.conf usr/share/lumen-os/dev-stack/tmux/
+dev-stack/kitty/kitty.conf usr/share/lumen-os/dev-stack/kitty/
+dev-stack/neovim/init.lua usr/share/lumen-os/dev-stack/neovim/
+dev-stack/starship/starship.toml etc/skel/.config/
+dev-stack/tmux/tmux.conf etc/skel/.config/tmux/
+dev-stack/kitty/kitty.conf etc/skel/.config/kitty/
+dev-stack/neovim/init.lua etc/skel/.config/nvim/
+packaging/templates/lumen-dev.sh etc/profile.d/
+packaging/templates/lumen-dev-setup usr/bin/

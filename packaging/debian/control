@@ -1,0 +1,119 @@
+Source: lumen-desktop
+Section: x11
+Priority: optional
+Maintainer: Lumen OS Developers <contact@lumenos.dev>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Homepage: https://lumenos.dev
+
+Package: lumen-shell
+Architecture: all
+Section: x11
+Priority: optional
+Provides: distro-shell
+Depends: ${misc:Depends},
+         python3 (>= 3.10),
+         python3-gi (>= 3.42),
+         gir1.2-gtk-4.0,
+         gir1.2-gtk4layershell-1.0,
+         libgtk4-layer-shell0
+Recommends: kitty, fonts-jetbrains-mono
+Suggests: hyprland (>= 0.53) | wayfire (>= 0.10), wl-clipboard
+Description: Lumen OS Curved Glass Desktop Shell
+ A modern, developer-first desktop shell built with GTK4 and gtk4-layer-shell.
+ Features real-time system metrics (/proc CPU, RAM, open ports, Docker socket),
+ dynamic toggling between vertical collapsible sidebar and horizontal dock,
+ and native GPU glass styling.
+
+Package: lumen-compositor
+Architecture: all
+Section: x11
+Priority: optional
+Provides: distro-compositor
+Depends: ${misc:Depends},
+         hyprland (>= 0.53) | wayfire (>= 0.10),
+         lumen-shell (= 1.0.0-1ubuntu1) | distro-shell,
+         kitty,
+         xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr,
+         xdg-desktop-portal
+Recommends: wayfire, waybar, wl-clipboard
+Description: Lumen OS Wayland Compositor Session
+ Hyprland configuration and Wayfire fallback integration featuring
+ GPU blur shaders and curved glass theme integration.
+
+Package: lumen-system
+Architecture: all
+Section: admin
+Priority: optional
+Provides: distro-system
+Depends: ${misc:Depends},
+         procps,
+         systemd-zram-generator
+Recommends: apt
+Suggests: snapd
+Description: Lumen OS System Performance Tuning & Optimization
+ Tunes Ubuntu 26.04 kernel parameters for development workloads:
+ inotify file watchers, swappiness 10, vfs_cache_pressure, network buffers,
+ automated zram swap generation, and optional APT pinning for snap blocking.
+
+Package: lumen-dev-stack
+Architecture: all
+Section: devel
+Priority: optional
+Provides: distro-dev-stack
+Depends: ${misc:Depends},
+         git,
+         curl,
+         wget,
+         ripgrep,
+         fd-find,
+         fzf,
+         jq,
+         btop,
+         tmux,
+         neovim,
+         build-essential,
+         ca-certificates,
+         unzip,
+         fonts-jetbrains-mono
+Recommends: kitty
+Description: Lumen OS Developer Environment Stack
+ Curated developer dotfiles, shell environment integrations,
+ CLI productivity tools, and automated runtime orchestration.
+
+Package: lumen-welcome
+Architecture: all
+Section: x11
+Priority: optional
+Provides: distro-welcome
+Depends: ${misc:Depends},
+         python3 (>= 3.10),
+         python3-gi (>= 3.42),
+         gir1.2-gtk-4.0,
+         lumen-shell (= 1.0.0-1ubuntu1) | distro-shell,
+         pkexec,
+         polkitd
+Recommends: lumen-system (= 1.0.0-1ubuntu1) | distro-system,
+            lumen-dev-stack (= 1.0.0-1ubuntu1) | distro-dev-stack
+Description: Lumen OS First-Boot Onboarding Wizard
+ Interactive onboarding wizard for initial system setup. Allows developers
+ to select shell orientation (sidebar vs dock), primary code editor (Neovim,
+ VS Code, Zed, Cursor), programming runtimes via mise, and apply developer
+ kernel tunings.
+
+Package: lumen-desktop
+Architecture: all
+Section: metapackages
+Priority: optional
+Provides: distro-desktop
+Depends: ${misc:Depends},
+         lumen-shell (= 1.0.0-1ubuntu1) | distro-shell,
+         lumen-compositor (= 1.0.0-1ubuntu1) | distro-compositor,
+         lumen-system (= 1.0.0-1ubuntu1) | distro-system,
+         lumen-dev-stack (= 1.0.0-1ubuntu1) | distro-dev-stack,
+         lumen-welcome (= 1.0.0-1ubuntu1) | distro-welcome
+Recommends: greetd | sddm | gdm3
+Description: Lumen OS Complete Desktop Environment Metapackage
+ Complete metapackage pulling together all components of Lumen OS:
+ Curved Glass Shell, Hyprland/Wayfire compositor configuration, dev-first
+ system optimizations, base development stack, and welcome wizard.

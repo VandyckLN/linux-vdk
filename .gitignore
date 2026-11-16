@@ -1,0 +1,21 @@
+# Build artifacts & generated binaries
+build/
+dist/
+*.deb
+*.iso
+*.sha256
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Test runtime reports & logs
+tests/e2e/reports/*.xml
+*.log
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/

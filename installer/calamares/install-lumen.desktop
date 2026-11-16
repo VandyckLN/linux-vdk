@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Install Lumen OS
+Name[pt_BR]=Instalar o Lumen OS
+GenericName=Live System Installer
+GenericName[pt_BR]=Instalador do Sistema Live
+Comment=Install Lumen OS 26.04 LTS Dev Edition to disk
+Comment[pt_BR]=Instalar o Lumen OS 26.04 LTS Dev Edition no disco
+Exec=/usr/local/bin/launch-calamares.sh
+Icon=/usr/share/calamares/branding/lumen/icon.svg
+Terminal=false
+Categories=System;Utility;
+Keywords=installer;calamares;system;lumen;install;
+StartupNotify=true
+StartupWMClass=calamares

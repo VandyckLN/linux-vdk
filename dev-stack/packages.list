@@ -1,0 +1,14 @@
+git
+curl
+wget
+ripgrep
+fd-find
+fzf
+jq
+btop
+tmux
+neovim
+build-essential
+ca-certificates
+unzip
+fonts-jetbrains-mono

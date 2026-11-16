@@ -1,0 +1,8 @@
+system/sysctl/99-lumen-dev.conf usr/share/lumen-os/system/sysctl/
+system/zram/zram-generator.conf usr/share/lumen-os/system/zram/
+system/apt/99-no-snap usr/share/lumen-os/system/apt/
+system/apply-system-tuning.sh usr/share/lumen-os/system/
+system/sysctl/99-lumen-dev.conf etc/sysctl.d/
+system/zram/zram-generator.conf etc/systemd/
+system/apt/99-no-snap etc/apt/preferences.d/
+packaging/templates/lumen-system-tune usr/bin/

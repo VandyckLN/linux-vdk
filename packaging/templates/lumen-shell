@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure Lumen OS shared python modules are accessible
+export PYTHONPATH="/usr/share/lumen-os:${PYTHONPATH:-}"
+
+# Preload GTK4 layer shell library if discoverable in system library paths
+for lib in /usr/lib/*/libgtk4-layer-shell.so.0 /usr/lib/libgtk4-layer-shell.so.0; do
+    if [[ -f "$lib" ]]; then
+        export LD_PRELOAD="${lib}${LD_PRELOAD:+:$LD_PRELOAD}"
+        break
+    fi
+done
+
+exec /usr/bin/python3 -m shell.main "$@"

@@ -1,0 +1,6 @@
+welcome/*.py usr/share/lumen-os/welcome/
+packaging/templates/lumen-welcome usr/bin/
+packaging/templates/lumen-welcome.desktop usr/share/applications/
+packaging/templates/dev.lumenos.welcome.desktop usr/share/applications/
+packaging/templates/dev.lumenos.welcome.desktop etc/xdg/autostart/
+packaging/templates/dev.lumenos.welcome.policy usr/share/polkit-1/actions/

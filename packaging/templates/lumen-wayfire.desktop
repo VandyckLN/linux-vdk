@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Lumen OS (Wayfire)
+Comment=Lumen OS Curved Glass Wayfire Compositor session
+Exec=/usr/bin/lumen-session-wayfire
+TryExec=/usr/bin/lumen-session-wayfire
+Type=Application
+DesktopNames=Wayfire
+Keywords=wayland;compositor;lumen;

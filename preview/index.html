@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linux VDK • Curved Glass Shell Preview</title>
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border-top: rgba(255, 255, 255, 0.55);
+      --glass-border-bottom: rgba(255, 255, 255, 0.16);
+      --text-main: rgba(255, 255, 255, 0.94);
+      --text-dim: rgba(255, 255, 255, 0.62);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 22%, rgba(255,255,255,0.16) 0%, transparent 42%),
+        radial-gradient(circle at 78% 72%, rgba(120,145,255,0.22) 0%, transparent 48%),
+        linear-gradient(135deg, #0d0f14 0%, #1d212b 45%, #0c0e12 100%);
+      position: relative;
+    }
+
+    /* Abstract curved waves wallpaper matching the video aesthetic */
+    .wallpaper-wave {
+      position: fixed;
+      inset: -15%;
+      pointer-events: none;
+      opacity: 0.55;
+      filter: blur(2px);
+    }
+
+    .controls-overlay {
+      position: fixed;
+      top: 22px;
+      right: 26px;
+      display: flex;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .ctrl-chip {
+      background: rgba(20, 24, 32, 0.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      padding: 9px 15px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 180ms ease;
+    }
+
+    .ctrl-chip:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .ctrl-chip.active {
+      background: rgba(255, 255, 255, 0.9);
+      color: #141820;
+    }
+
+    /* Curved Glass Bar */
+    .shell-anchor {
+      position: fixed;
+      inset: 0;
+      padding: 22px;
+      display: flex;
+      pointer-events: none;
+    }
+
+    .shell-anchor.mode-vertical {
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .shell-anchor.mode-horizontal {
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .curved-bar {
+      pointer-events: auto;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 68px;
+      min-height: 620px;
+      padding: 14px 10px;
+      border-radius: 26px;
+      background:
+        linear-gradient(155deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.06) 42%, rgba(10,12,18,0.24) 100%);
+      backdrop-filter: blur(28px) saturate(140%);
+      -webkit-backdrop-filter: blur(28px) saturate(140%);
+      border: 1.5px solid rgba(255, 255, 255, 0.34);
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.55),
+        inset 0 2px 3px rgba(255, 255, 255, 0.52),
+        inset 0 -2px 6px rgba(255, 255, 255, 0.14),
+        inset 3px 0 10px rgba(255, 255, 255, 0.12),
+        inset -3px 0 10px rgba(0, 0, 0, 0.25);
+      transition: width 360ms var(--ease), min-height 360ms var(--ease), padding 300ms var(--ease), border-radius 300ms var(--ease);
+      overflow: hidden;
+    }
+
+    /* Subtle curved specular highlight on edge */
+    .curved-bar::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1.5px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.75), rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.42));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .curved-bar.expanded.vertical {
+      width: 274px;
+      padding: 16px;
+    }
+
+    .curved-bar.horizontal {
+      flex-direction: row;
+      align-items: center;
+      width: auto;
+      min-height: 64px;
+      height: 64px;
+      padding: 8px 14px;
+      border-radius: 22px;
+      gap: 8px;
+    }
+
+    .bar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand {
+      display: none;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2.2px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .expanded.vertical .brand { display: flex; }
+    .horizontal .bar-header { display: none; }
+
+    .toggle-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 11px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      transition: all 160ms ease;
+    }
+
+    .expanded.vertical .toggle-btn { margin: 0; }
+    .toggle-btn:hover { background: rgba(255,255,255,0.2); }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 4px 2px;
+      justify-content: center;
+    }
+
+    .expanded.vertical .profile { justify-content: flex-start; }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #6d88ff, #b373ff);
+      border: 1.5px solid rgba(255,255,255,0.75);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 13px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .avatar::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #46e595;
+      border: 2px solid #202530;
+    }
+
+    .profile-meta { display: none; }
+    .expanded.vertical .profile-meta { display: block; }
+
+    .profile-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .badge {
+      background: rgba(255,255,255,0.92);
+      color: #161920;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 5px;
+    }
+
+    .uid { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+    .menu-label {
+      display: none;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 4px;
+    }
+
+    .expanded.vertical .menu-label { display: block; }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .horizontal .nav-list {
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 11px;
+      height: 40px;
+      border-radius: 13px;
+      padding: 0 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 160ms ease;
+      white-space: nowrap;
+    }
+
+    .expanded.vertical .nav-item { justify-content: flex-start; }
+    .horizontal .nav-item { width: 42px; padding: 0; }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.10);
+      color: #fff;
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,0.92);
+      color: #151820;
+      font-weight: 600;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    }
+
+    .nav-text, .nav-arrow { display: none; }
+    .expanded.vertical .nav-text { display: inline; flex: 1; text-align: left; }
+    .expanded.vertical .nav-arrow { display: inline; font-size: 11px; opacity: 0.7; }
+
+    .submenu {
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      padding-left: 26px;
+      margin: 2px 0 6px;
+    }
+
+    .expanded.vertical .submenu.open { display: flex; }
+
+    .sub-link {
+      padding: 6px 10px;
+      border-radius: 9px;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 140ms ease;
+    }
+
+    .sub-link:hover, .sub-link.selected {
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+    }
+
+    /* Notice / Dev Card */
+    .notice-compact {
+      width: 42px;
+      height: 50px;
+      margin: 0 auto;
+      border-radius: 14px;
+      background: linear-gradient(145deg, rgba(135,160,255,0.45), rgba(182,126,255,0.3));
+      border: 1px solid rgba(255,255,255,0.35);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .expanded.vertical .notice-compact,
+    .horizontal .notice-compact { display: none; }
+
+    .notice-card {
+      display: none;
+      border-radius: 16px;
+      padding: 13px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.22), rgba(124,148,255,0.14) 55%, rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .expanded.vertical .notice-card { display: block; }
+    .notice-tag { font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; }
+    .notice-title { font-size: 16px; font-weight: 800; margin: 3px 0 6px; }
+    .notice-body { font-size: 11px; color: rgba(255,255,255,0.82); line-height: 1.45; }
+
+    .h-status {
+      display: none;
+      font-size: 12px;
+      color: rgba(255,255,255,0.85);
+      padding: 0 10px;
+      border-left: 1px solid rgba(255,255,255,0.18);
+      white-space: nowrap;
+    }
+    .horizontal .h-status { display: block; }
+
+    /* Horizontal floating drawer */
+    .h-drawer {
+      position: fixed;
+      bottom: 98px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      width: 420px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(24, 28, 36, 0.72);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1.5px solid rgba(255,255,255,0.32);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 220ms var(--ease);
+    }
+
+    .h-drawer.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .footer-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-top: 1px solid rgba(255,255,255,0.14);
+      padding-top: 8px;
+    }
+    .horizontal .footer-actions {
+      flex-direction: row;
+      border-top: none;
+      border-left: 1px solid rgba(255,255,255,0.18);
+      padding-top: 0;
+      padding-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <svg class="wallpaper-wave" viewBox="0 0 1440 900" fill="none">
+    <path d="M-100 650 C 260 400, 620 850, 1020 460 C 1220 270, 1420 340, 1560 220" stroke="rgba(255,255,255,0.14)" stroke-width="110" stroke-linecap="round"/>
+    <path d="M-80 280 C 320 460, 740 80, 1180 420 C 1340 540, 1450 510, 1560 470" stroke="rgba(160,175,255,0.10)" stroke-width="85" stroke-linecap="round"/>
+  </svg>
+
+  <div class="controls-overlay">
+    <button class="ctrl-chip active" id="btnVertical">Barra Lateral</button>
+    <button class="ctrl-chip" id="btnHorizontal">Barra Horizontal</button>
+    <button class="ctrl-chip" id="btnExpand">Expandir / Recolher</button>
+  </div>
+
+  <div class="shell-anchor mode-vertical" id="anchor">
+    <aside class="curved-bar vertical" id="bar">
+      <div class="bar-header">
+        <div class="brand"><span>✦</span><span>LINUX VDK</span></div>
+        <button class="toggle-btn" id="toggleInside" title="Expandir / Recolher">⇄</button>
+      </div>
+
+      <div class="profile">
+        <div class="avatar">NV</div>
+        <div class="profile-meta">
+          <div class="profile-name">Nova <span class="badge">DEV</span></div>
+          <div class="uid">Ubuntu 26.04 • Wayland</div>
+        </div>
+      </div>
+
+      <div class="menu-label">WORKSPACE</div>
+
+      <nav class="nav-list" id="navList">
+        <button class="nav-item active" data-id="workspaces">
+          <span>⌘</span><span class="nav-text">Workspaces</span><span class="nav-arrow">▾</span>
+        </button>
+        <div class="submenu open" data-parent="workspaces">
+          <div class="sub-link selected">Terminal GPU (Kitty)</div>
+          <div class="sub-link">Editor / IDE</div>
+          <div class="sub-link">Projetos (~/projetos)</div>
+        </div>
+
+        <button class="nav-item" data-id="containers">
+          <span>◫</span><span class="nav-text">Containers</span><span class="nav-arrow">▾</span>
+        </button>
+        <div class="submenu" data-parent="containers">
+          <div class="sub-link">Docker (3 running)</div>
+          <div class="sub-link">Portas :3000 :5432</div>
+        </div>
+
+        <button class="nav-item" data-id="tools">
+          <span>⚙</span><span class="nav-text">Dev Tools</span><span class="nav-arrow">▾</span>
+        </button>
+        <div class="submenu" data-parent="tools">
+          <div class="sub-link">mise (Node 22, Python 3.14)</div>
+          <div class="sub-link">Monitor btop</div>
+        </div>
+
+        <button class="nav-item" data-id="git">
+          <span>⎇</span><span class="nav-text">Git & Repos</span>
+        </button>
+      </nav>
+
+      <div class="notice-compact">◆<br/>DEV</div>
+
+      <div class="notice-card">
+        <div class="notice-tag">SYSTEM • LIVE</div>
+        <div class="notice-title">NOTICE</div>
+        <div class="notice-body">CPU 14% • RAM 1.8 / 16 GB<br/>Docker: 3 containers up • :3000</div>
+      </div>
+
+      <div class="h-status">◆ CPU 14% • RAM 1.8G • Docker 3</div>
+
+      <div class="footer-actions">
+        <button class="nav-item" id="quickFlip" title="Alternar Lateral / Horizontal">
+          <span>⇄</span><span class="nav-text">Modo Barra</span>
+        </button>
+        <button class="nav-item" title="Configurações">
+          <span>⚙</span><span class="nav-text">Settings</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="h-drawer" id="hDrawer">
+    <div class="notice-tag">QUICK DRAWER • MODO HORIZONTAL</div>
+    <div class="notice-title" id="drawerTitle">Workspaces</div>
+    <div class="notice-body">No modo horizontal, clicar em qualquer ícone da barra abre este painel em vidro curvo com seus terminais, containers Docker, portas e métricas.</div>
+  </div>
+
+  <script>
+    const anchor = document.getElementById("anchor");
+    const bar = document.getElementById("bar");
+    const btnV = document.getElementById("btnVertical");
+    const btnH = document.getElementById("btnHorizontal");
+    const btnExpand = document.getElementById("btnExpand");
+    const toggleInside = document.getElementById("toggleInside");
+    const quickFlip = document.getElementById("quickFlip");
+    const hDrawer = document.getElementById("hDrawer");
+    const drawerTitle = document.getElementById("drawerTitle");
+
+    let mode = "vertical";
+    let expanded = false;
+
+    function render() {
+      anchor.className = `shell-anchor mode-${mode}`;
+      bar.className = `curved-bar ${mode} ${expanded && mode === "vertical" ? "expanded" : ""}`;
+      btnV.classList.toggle("active", mode === "vertical");
+      btnH.classList.toggle("active", mode === "horizontal");
+      if (mode === "vertical") hDrawer.classList.remove("open");
+    }
+
+    btnV.onclick = () => { mode = "vertical"; render(); };
+    btnH.onclick = () => { mode = "horizontal"; expanded = false; render(); };
+    quickFlip.onclick = () => { mode = mode === "vertical" ? "horizontal" : "vertical"; render(); };
+    btnExpand.onclick = toggleInside.onclick = () => {
+      if (mode === "horizontal") {
+        hDrawer.classList.toggle("open");
+      } else {
+        expanded = !expanded;
+        render();
+      }
+    };
+
+    document.querySelectorAll(".nav-item[data-id]").forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll(".nav-item[data-id]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const id = btn.dataset.id;
+        document.querySelectorAll(".submenu").forEach(sub => {
+          sub.classList.toggle("open", sub.dataset.parent === id);
+        });
+        if (mode === "horizontal") {
+          drawerTitle.textContent = btn.querySelector(".nav-text")?.textContent || id;
+          hDrawer.classList.toggle("open");
+        } else if (!expanded) {
+          expanded = true;
+          render();
+        }
+      };
+    });
+
+    document.querySelectorAll(".sub-link").forEach(link => {
+      link.onclick = () => {
+        document.querySelectorAll(".sub-link").forEach(l => l.classList.remove("selected"));
+        link.classList.add("selected");
+      };
+    });
+
+    render();
+  </script>
+</body>
+</html>

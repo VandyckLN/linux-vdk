@@ -1,0 +1,21 @@
+{
+  "distro_name": "Linux VDK",
+  "user": {
+    "name": "Nova",
+    "badge": "DEV",
+    "subtitle": "Ubuntu 26.04 • Linux VDK"
+  },
+  "bar": {
+    "orientation": "vertical",
+    "vertical_edge": "left",
+    "horizontal_edge": "bottom",
+    "expanded": false,
+    "glass_opacity": 0.62,
+    "blur_enabled": true,
+    "exclusive_zone": false
+  },
+  "terminal_cmd": "kitty",
+  "editor_cmd": "code",
+  "browser_cmd": "xdg-open https://localhost",
+  "projects_dir": "~/projetos"
+}

@@ -1,0 +1,90 @@
+name: Build Linux VDK ISO
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_build:
+        description: "Limpar cache do chroot antes do build"
+        required: false
+        default: "true"
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - "shell/**"
+      - "compositor/**"
+      - "system/**"
+      - "dev-stack/**"
+      - "welcome/**"
+      - "packaging/**"
+      - "installer/**"
+      - "scripts/build-iso.sh"
+      - ".github/workflows/build-iso.yml"
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space on runner
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debootstrap \
+            squashfs-tools \
+            xorriso \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools \
+            dpkg-dev \
+            debhelper \
+            fakeroot \
+            qemu-system-x86 \
+            ovmf
+
+      - name: Build .deb packages and local APT repository
+        run: |
+          chmod +x scripts/*.sh packaging/*.sh
+          ./scripts/package-debs.sh
+
+      - name: Run E2E validation suite
+        run: |
+          bash tests/e2e/run-e2e-tests.sh --quiet
+
+      - name: Build Linux VDK installable ISO (Ubuntu 26.04 Minimal)
+        run: |
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            sudo ./scripts/build-iso.sh --clean
+          else
+            sudo ./scripts/build-iso.sh
+          fi
+
+      - name: Verify ISO and QEMU dry-run
+        run: |
+          ls -lh dist/
+          sha256sum -c dist/linux-vdk-26.04-amd64.iso.sha256
+          ./scripts/test-iso-qemu.sh --dry-run --uefi
+          ./scripts/test-iso-qemu.sh --dry-run --bios
+
+      - name: Upload ISO and checksum artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-vdk-26.04-amd64-iso
+          path: |
+            dist/linux-vdk-26.04-amd64.iso
+            dist/linux-vdk-26.04-amd64.iso.sha256
+            dist/lumen-os-26.04-amd64.iso
+            dist/debs/*.deb
+          retention-days: 14

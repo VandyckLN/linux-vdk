@@ -1,0 +1,8 @@
+Package: INVALID PACKAGE NAME
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Lumen Test <test@lumen-os.org>
+Description: Corrupted package control fixture
+ Test package with invalid characters in Package field to test syntax error handling.

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#748dff"/>
+      <stop offset="100%" stop-color="#a970ff"/>
+    </linearGradient>
+    <linearGradient id="specularGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#748dff" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#141822" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="54" fill="#141822"/>
+  <circle cx="128" cy="128" r="90" fill="url(#glow)"/>
+  <rect x="24" y="24" width="208" height="208" rx="46" fill="rgba(255,255,255,0.05)" stroke="url(#specularGrad)" stroke-width="2.5"/>
+  <!-- Glowing Lumen Emblem -->
+  <path d="M 128 48 C 130 92, 164 126, 208 128 C 164 130, 130 164, 128 208 C 126 164, 92 130, 48 128 C 92 126, 126 92, 128 48 Z" fill="url(#primaryGrad)"/>
+  <circle cx="128" cy="128" r="16" fill="#ffffff" opacity="0.9"/>
+</svg>

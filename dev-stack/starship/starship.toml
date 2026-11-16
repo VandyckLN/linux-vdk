@@ -1,0 +1,59 @@
+# Lumen OS - Starship Prompt Minimalista para Devs
+add_newline = false
+command_timeout = 800
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$nodejs\
+$python\
+$rust\
+$golang\
+$docker_context\
+$cmd_duration\
+$line_break\
+$character"""
+
+[character]
+success_symbol = "[❯](bold #82aaff)"
+error_symbol = "[❯](bold #f2777a)"
+
+[directory]
+style = "bold #eef2f8"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[git_branch]
+symbol = "⎇ "
+style = "bold #c792ea"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "#f6d365"
+format = "([$all_status$ahead_behind]($style) )"
+
+[nodejs]
+symbol = "⬢ "
+style = "#78e08f"
+format = "[$symbol($version)]($style) "
+
+[python]
+symbol = "🐍 "
+style = "#ffe388"
+format = "[$symbol($version)]($style) "
+
+[rust]
+symbol = "⚙ "
+style = "#f2777a"
+format = "[$symbol($version)]($style) "
+
+[golang]
+symbol = "🐹 "
+style = "#7fdbca"
+format = "[$symbol($version)]($style) "
+
+[cmd_duration]
+min_time = 2000
+style = "#8d96ab"
+format = "[$duration]($style)"

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Lumen OS Welcome
+GenericName=First-Boot Setup
+Comment=Configure your Lumen OS desktop experience and developer tools
+Exec=/usr/bin/lumen-welcome
+TryExec=/usr/bin/lumen-welcome
+Icon=system-help
+Terminal=false
+Categories=System;Settings;GTK;
+StartupNotify=true

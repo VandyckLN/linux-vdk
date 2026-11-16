@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Apply kernel sysctl parameters safely
+        if command -v sysctl >/dev/null 2>&1; then
+            sysctl --system >/dev/null 2>&1 || true
+        fi
+
+        # Safely notify systemd only if systemd is booted (PID 1)
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload >/dev/null 2>&1 || true
+            systemctl restart systemd-zram-setup@zram0.service >/dev/null 2>&1 || true
+        fi
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

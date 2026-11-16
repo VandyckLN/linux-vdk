@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: no
+# SPDX-License-Identifier: CC0-1.0
+#
+# Lumen OS 26.04 LTS (Resolute Raccoon) Calamares Branding Descriptor
+---
+componentName: lumen
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 1020px,660px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName: "Linux VDK"
+    shortProductName: "VDK"
+    version: "26.04 LTS Dev Edition"
+    shortVersion: "26.04"
+    versionedName: "Linux VDK 26.04 LTS Dev Edition"
+    shortVersionedName: "Linux VDK 26.04"
+    bootloaderEntryName: "Linux VDK 26.04 LTS"
+    productUrl: "https://github.com/vandyck/Distro"
+    supportUrl: "https://github.com/vandyck/Distro/issues"
+    knownIssuesUrl: "https://github.com/vandyck/Distro/issues"
+    releaseNotesUrl: "https://github.com/vandyck/Distro/releases"
+    donateUrl: ""
+
+images:
+    productLogo: "logo.svg"
+    productIcon: "icon.svg"
+    productWelcome: "welcome-splash.png"
+
+slideshow: "slideshow/slideshow.qml"
+slideshowAPI: 2
+
+style:
+    sidebarBackground: "#11141a"
+    sidebarText: "#e2e8f0"
+    sidebarTextHighlight: "#748dff"
+    sidebarBackgroundHighlight: "#1e2433"

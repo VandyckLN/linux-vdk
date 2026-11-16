@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Lumen OS (Hyprland)
+Comment=Lumen OS Curved Glass Wayland Compositor session
+Exec=/usr/bin/lumen-session-hyprland
+TryExec=/usr/bin/lumen-session-hyprland
+Type=Application
+DesktopNames=Lumen:Hyprland
+Keywords=wayland;compositor;lumen;

@@ -1,0 +1,8 @@
+packaging/templates/hyprland.conf usr/share/lumen-os/compositor/hyprland/
+packaging/templates/wayfire.ini usr/share/lumen-os/compositor/wayfire/
+packaging/templates/hyprland.conf etc/skel/.config/hypr/
+packaging/templates/wayfire.ini etc/skel/.config/
+packaging/templates/lumen-session-hyprland usr/bin/
+packaging/templates/lumen-session-wayfire usr/bin/
+packaging/templates/lumen-hyprland.desktop usr/share/wayland-sessions/
+packaging/templates/lumen-wayfire.desktop usr/share/wayland-sessions/

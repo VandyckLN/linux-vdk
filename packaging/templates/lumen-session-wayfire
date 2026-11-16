@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export XDG_CURRENT_DESKTOP="Wayfire"
+export XDG_SESSION_TYPE="wayland"
+export XDG_SESSION_DESKTOP="lumen-wayfire"
+export PYTHONPATH="/usr/share/lumen-os:${PYTHONPATH:-}"
+
+USER_CONF="$HOME/.config/wayfire.ini"
+SYS_CONF="/usr/share/lumen-os/compositor/wayfire/wayfire.ini"
+
+if [[ ! -f "$USER_CONF" ]]; then
+    mkdir -p "$HOME/.config"
+    if [[ -f "$SYS_CONF" ]]; then
+        cp "$SYS_CONF" "$USER_CONF"
+    fi
+fi
+
+CONF_TO_USE="$USER_CONF"
+if [[ ! -f "$CONF_TO_USE" ]]; then
+    CONF_TO_USE="$SYS_CONF"
+fi
+
+exec wayfire -c "$CONF_TO_USE" "$@"
