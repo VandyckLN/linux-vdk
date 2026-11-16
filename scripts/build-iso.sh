@@ -274,7 +274,8 @@ cat /usr/lib/grub/i386-pc/cdboot.img "$WORK_DIR/core.img" > "$STAGING_DIR/boot/g
 log "Gerando imagem ISO hibrida em $ISO_PATH..."
 xorriso -as mkisofs \
   -iso-level 3 \
-  -full-iso9660-names \
+  -full-iso9660-filenames \
+  -R -J \
   -volid "LINUX_VDK_26_04" \
   -eltorito-boot boot/grub/bios.img \
     -no-emul-boot \
