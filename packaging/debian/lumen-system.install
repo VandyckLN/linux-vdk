@@ -6,3 +6,7 @@ system/sysctl/99-lumen-dev.conf etc/sysctl.d/
 system/zram/zram-generator.conf etc/systemd/
 system/apt/99-no-snap etc/apt/preferences.d/
 packaging/templates/lumen-system-tune usr/bin/
+system/lumen-root-helper usr/bin/
+system/lib/elevate.sh usr/share/lumen-os/system/lib/
+system/root-helper/allowed-packages.list usr/share/lumen-os/system/root-helper/
+packaging/templates/dev.lumenos.root-helper.policy usr/share/polkit-1/actions/

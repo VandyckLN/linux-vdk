@@ -246,5 +246,62 @@ print("\n".join(out))
 assert_contains "$elev_out" "ELEV=pkexec" "run_commands deve exportar LUMEN_ELEVATE=pkexec para o comando"
 test_case_end
 
+test_case_start "T3_PAIR7_DEPENDS_SINCRONIZADOS" "Os Depends do control e do build-debs.sh são iguais"
+deps_out="$(python3 -I - "${WORKSPACE_ROOT}/packaging/debian/control" "${WORKSPACE_ROOT}/packaging/build-debs.sh" <<'PYEOF' 2>&1
+import re
+import sys
+
+control_path, build_path = sys.argv[1:3]
+VERSION = "1.0.0-1ubuntu1"
+
+
+def norm(text):
+    return sorted(p.strip() for p in text.split(",") if p.strip())
+
+
+control = {}
+with open(control_path, encoding="utf-8") as fh:
+    stanzas = fh.read().replace("\r", "").split("\n\n")
+for stanza in stanzas:
+    name = re.search(r"^Package: (\S+)", stanza, re.M)
+    dep = re.search(r"^Depends:(.*(?:\n[ \t].*)*)", stanza, re.M)
+    if name and dep:
+        items = [d for d in norm(dep.group(1).replace("\n", " ")) if d != "${misc:Depends}"]
+        control[name.group(1)] = items
+
+build = {}
+with open(build_path, encoding="utf-8") as fh:
+    text = fh.read().replace("\r", "")
+for block in re.findall(r'cat <<EOF > "\$stage_dir/DEBIAN/control"\n(.*?)\nEOF', text, re.S):
+    name = re.search(r"^Package: (\S+)", block, re.M)
+    dep = re.search(r"^Depends: (.*)$", block, re.M)
+    if name and dep:
+        build[name.group(1)] = norm(dep.group(1).replace("$VERSION", VERSION))
+
+errors = []
+for pkg in sorted(set(control) | set(build)):
+    if control.get(pkg) != build.get(pkg):
+        errors.append("%s: control=%s build-debs=%s" % (pkg, control.get(pkg), build.get(pkg)))
+
+
+def need(pkg, dep):
+    if dep not in build.get(pkg, []) or dep not in control.get(pkg, []):
+        errors.append("%s deve depender de %s" % (pkg, dep))
+
+
+need("lumen-system", "pkexec")
+need("lumen-system", "polkitd")
+need("lumen-dev-stack", "lumen-system (= %s)" % VERSION)
+need("lumen-compositor", "hyprpolkitagent")
+
+if errors:
+    print("\n".join(errors))
+    sys.exit(1)
+PYEOF
+)"
+deps_status=$?
+assert_eq 0 "$deps_status" "Depends divergentes -> ${deps_out}"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

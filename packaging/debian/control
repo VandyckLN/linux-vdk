@@ -35,7 +35,8 @@ Depends: ${misc:Depends},
          lumen-shell (= 1.0.0-1ubuntu1) | distro-shell,
          kitty,
          xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr,
-         xdg-desktop-portal
+         xdg-desktop-portal,
+         hyprpolkitagent
 Recommends: wayfire, waybar, wl-clipboard
 Description: Sessão do compositor Wayland do Lumen OS
  Configuração do Hyprland e integração de fallback com o Wayfire, com
@@ -48,7 +49,9 @@ Priority: optional
 Provides: distro-system
 Depends: ${misc:Depends},
          procps,
-         systemd-zram-generator
+         systemd-zram-generator,
+         pkexec,
+         polkitd
 Recommends: apt
 Suggests: snapd
 Description: Ajuste e otimização de desempenho do sistema Lumen OS
@@ -75,7 +78,8 @@ Depends: ${misc:Depends},
          build-essential,
          ca-certificates,
          unzip,
-         fonts-jetbrains-mono
+         fonts-jetbrains-mono,
+         lumen-system (= 1.0.0-1ubuntu1)
 Recommends: kitty
 Description: Stack de ambiente de desenvolvimento do Lumen OS
  Dotfiles selecionados para desenvolvedores, integrações de ambiente de shell,

@@ -424,5 +424,28 @@ assert_file_exists "${WORKSPACE_ROOT}/system/lib/elevate.sh"
 assert_syntax_valid "${WORKSPACE_ROOT}/system/lib/elevate.sh" "sh"
 test_case_end
 
+# T1-F7-04: Policy do polkit
+test_case_start "T1_F7_04" "Policy do polkit é XML válido e autoriza o lumen-root-helper"
+policy_file="${WORKSPACE_ROOT}/packaging/templates/dev.lumenos.root-helper.policy"
+policy_out="$(python3 -I -c '
+import sys
+import xml.etree.ElementTree as ET
+
+action = ET.parse(sys.argv[1]).getroot().find("action[@id=\"dev.lumenos.root-helper\"]")
+if action is None:
+    print("ação dev.lumenos.root-helper ausente")
+    sys.exit(1)
+annotes = {a.get("key"): (a.text or "").strip() for a in action.findall("annotate")}
+defaults = {d.tag: (d.text or "").strip() for d in action.find("defaults")}
+print(annotes.get("org.freedesktop.policykit.exec.path"))
+print(annotes.get("org.freedesktop.policykit.exec.allow_gui"))
+print(defaults.get("allow_active"))
+' "$policy_file" 2>&1)"
+assert_eq "/usr/bin/lumen-root-helper
+true
+auth_admin_keep" "$policy_out" "A policy deve apontar para o helper, permitir GUI e usar auth_admin_keep"
+assert_file_not_exists "${WORKSPACE_ROOT}/packaging/templates/dev.lumenos.welcome.policy" "A policy antiga do lumen-welcome não deve mais existir"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

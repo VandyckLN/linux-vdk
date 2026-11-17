@@ -107,7 +107,7 @@ Priority: optional
 Architecture: all
 Maintainer: Lumen OS Developers <contact@lumenos.dev>
 Provides: distro-compositor
-Depends: hyprland (>= 0.53) | wayfire (>= 0.10), lumen-shell (= $VERSION) | distro-shell, kitty, xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr, xdg-desktop-portal
+Depends: hyprland (>= 0.53) | wayfire (>= 0.10), lumen-shell (= $VERSION) | distro-shell, kitty, xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr, xdg-desktop-portal, hyprpolkitagent
 Recommends: wayfire, waybar, wl-clipboard
 Description: Sessão do compositor Wayland do Lumen OS
  Configuração do Hyprland e integração de fallback com o Wayfire, com
@@ -119,6 +119,9 @@ EOF
             mkdir -p "$stage_dir/usr/share/lumen-os/system/sysctl" \
                      "$stage_dir/usr/share/lumen-os/system/zram" \
                      "$stage_dir/usr/share/lumen-os/system/apt" \
+                     "$stage_dir/usr/share/lumen-os/system/lib" \
+                     "$stage_dir/usr/share/lumen-os/system/root-helper" \
+                     "$stage_dir/usr/share/polkit-1/actions" \
                      "$stage_dir/etc/sysctl.d" \
                      "$stage_dir/etc/systemd" \
                      "$stage_dir/etc/apt/preferences.d" \
@@ -132,6 +135,10 @@ EOF
             cp "$WORKSPACE_ROOT/system/zram/zram-generator.conf" "$stage_dir/etc/systemd/zram-generator.conf"
             cp "$WORKSPACE_ROOT/system/apt/99-no-snap" "$stage_dir/etc/apt/preferences.d/99-no-snap"
             cp "$WORKSPACE_ROOT/packaging/templates/lumen-system-tune" "$stage_dir/usr/bin/lumen-system-tune"
+            cp "$WORKSPACE_ROOT/system/lumen-root-helper" "$stage_dir/usr/bin/lumen-root-helper"
+            cp "$WORKSPACE_ROOT/system/lib/elevate.sh" "$stage_dir/usr/share/lumen-os/system/lib/elevate.sh"
+            cp "$WORKSPACE_ROOT/system/root-helper/allowed-packages.list" "$stage_dir/usr/share/lumen-os/system/root-helper/allowed-packages.list"
+            cp "$WORKSPACE_ROOT/packaging/templates/dev.lumenos.root-helper.policy" "$stage_dir/usr/share/polkit-1/actions/dev.lumenos.root-helper.policy"
 
             # Script de mantenedor postinst
             sed '/#DEBHELPER#/d' "$WORKSPACE_ROOT/packaging/debian/lumen-system.postinst" > "$stage_dir/DEBIAN/postinst"
@@ -145,7 +152,7 @@ Priority: optional
 Architecture: all
 Maintainer: Lumen OS Developers <contact@lumenos.dev>
 Provides: distro-system
-Depends: procps, systemd-zram-generator
+Depends: procps, systemd-zram-generator, pkexec, polkitd
 Recommends: apt
 Suggests: snapd
 Description: Ajuste e otimização de desempenho do sistema Lumen OS
@@ -189,7 +196,7 @@ Priority: optional
 Architecture: all
 Maintainer: Lumen OS Developers <contact@lumenos.dev>
 Provides: distro-dev-stack
-Depends: git, curl, wget, ripgrep, fd-find, fzf, jq, btop, tmux, neovim, build-essential, ca-certificates, unzip, fonts-jetbrains-mono
+Depends: git, curl, wget, ripgrep, fd-find, fzf, jq, btop, tmux, neovim, build-essential, ca-certificates, unzip, fonts-jetbrains-mono, lumen-system (= $VERSION)
 Recommends: kitty
 Description: Stack de ambiente de desenvolvimento do Lumen OS
  Dotfiles selecionados para desenvolvedores, integrações de ambiente de shell,
@@ -201,15 +208,13 @@ EOF
             mkdir -p "$stage_dir/usr/share/lumen-os/welcome" \
                      "$stage_dir/usr/bin" \
                      "$stage_dir/usr/share/applications" \
-                     "$stage_dir/etc/xdg/autostart" \
-                     "$stage_dir/usr/share/polkit-1/actions"
+                     "$stage_dir/etc/xdg/autostart"
 
             cp -r "$WORKSPACE_ROOT/welcome/"* "$stage_dir/usr/share/lumen-os/welcome/"
             cp "$WORKSPACE_ROOT/packaging/templates/lumen-welcome" "$stage_dir/usr/bin/lumen-welcome"
             cp "$WORKSPACE_ROOT/packaging/templates/lumen-welcome.desktop" "$stage_dir/usr/share/applications/lumen-welcome.desktop"
             cp "$WORKSPACE_ROOT/packaging/templates/dev.lumenos.welcome.desktop" "$stage_dir/usr/share/applications/dev.lumenos.welcome.desktop"
             cp "$WORKSPACE_ROOT/packaging/templates/dev.lumenos.welcome.desktop" "$stage_dir/etc/xdg/autostart/dev.lumenos.welcome.desktop"
-            cp "$WORKSPACE_ROOT/packaging/templates/dev.lumenos.welcome.policy" "$stage_dir/usr/share/polkit-1/actions/dev.lumenos.welcome.policy"
 
             cat <<EOF > "$stage_dir/DEBIAN/control"
 Package: lumen-welcome
