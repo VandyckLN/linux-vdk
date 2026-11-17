@@ -16,7 +16,7 @@ Problemas relacionados encontrados na análise:
 
 ## 2. Objetivos
 
-- O assistente consegue executar todas as etapas administrativas pedindo a senha **uma única vez** numa janela gráfica do polkit.
+- O assistente consegue executar todas as etapas administrativas pedindo a senha **uma vez por etapa** (ajustes de sistema; setup dev) numa janela gráfica do polkit. *(Revisado em 2026-11-17 após o teste na VM: o "Aplicar" padrão pede a senha 2 vezes, e isso foi aceito.)*
 - Os scripts **continuam funcionando no terminal** do jeito atual (o `sudo` pede a senha no TTY).
 - As tarefas do usuário continuam rodando **sem privilégio**, com o `$HOME` e o `$USER` corretos.
 - Tudo que roda como root fica concentrado num único executável auditável, com lista fechada de ações.
@@ -87,7 +87,7 @@ Alternativas descartadas:
 **Tradução dos códigos do `pkexec`:**
 
 - `126` → "Autenticação cancelada. Nada foi alterado."
-- `127` → "Sem permissão de administrador para esta ação."
+- `127` → "Autenticação cancelada ou negada. Nada foi alterado." *(o `hyprpolkitagent` devolve 127 ao cancelar; ver §9)*
 - Os demais são repassados sem alteração.
 
 ### 4.4 Alterações nos scripts existentes
@@ -130,7 +130,7 @@ WelcomeWindow ──"Aplicar"──▶ stack_installer.run_commands  (env LUMEN_
                           /usr/bin/lumen-root-helper   sudo lumen-root-helper
 ```
 
-O `auth_admin_keep` mantém a autorização em cache durante a sessão ativa por alguns minutos, então as chamadas seguintes de `pkexec` no mesmo "Aplicar" não pedem a senha de novo.
+O `auth_admin_keep` mantém a autorização em cache por alguns minutos **para o mesmo processo chamador**: as chamadas seguintes de `pkexec` feitas pelo mesmo script não pedem a senha de novo, mas cada etapa (processo bash separado) pede a sua. Confirmado no teste na VM em 2026-11-17: `system-tune` (1ª senha), `apt-install` dos pacotes CLI (2ª senha) e `apt-install neovim` (sem senha, mesmo processo).
 
 ## 6. Empacotamento
 
@@ -175,7 +175,10 @@ Os testes entram na suíte E2E existente (`tests/e2e/`), usando `harness.sh` e o
 
 ## 9. Riscos
 
-- **O cache do `auth_admin_keep` é por processo/sessão do polkit:** se ele não cobrir chamadas sucessivas de `pkexec` vindas de processos bash diferentes, o usuário pode ver mais de uma janela de senha. Mitigação: confirmar no teste manual. Se ocorrer, agrupar as ações numa única invocação do helper (`lumen-root-helper batch <arquivo>`) num ajuste posterior.
+- **O cache do `auth_admin_keep` é por processo/sessão do polkit:** se ele não cobrir chamadas sucessivas de `pkexec` vindas de processos bash diferentes, o usuário pode ver mais de uma janela de senha. **Confirmado no teste na VM (2026-11-17): 2 janelas no "Aplicar" padrão, aceito como "uma por etapa".** O agrupamento das ações numa invocação só do helper fica fora de escopo.
+- **`hyprpolkitagent` sem `qt6-wayland`:** o pacote do Ubuntu não declara os plugins `wayland-shell-integration`; sem eles o agente aborta ao abrir a janela. Mitigação: `lumen-compositor` depende de `qt6-wayland` (achado no teste na VM).
+- **Cancelar a janela devolve 127, não 126:** com o `hyprpolkitagent`, o `pkexec` responde "Not authorized" ao cancelar. Por isso o `as_root` traduz o 127 como "Autenticação cancelada ou negada. Nada foi alterado."
+- **Agente sem reinício:** o `exec-once` sobe o agente uma vez só; se ele cair, as janelas de senha param de aparecer até a próxima sessão.
 - **`hyprpolkitagent` no Wayfire:** o pacote é voltado ao Hyprland. Por ser Qt6/Wayland comum, deve funcionar, mas é preciso validar no teste manual da sessão Wayfire.
 
 ---
