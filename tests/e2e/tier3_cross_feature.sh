@@ -303,5 +303,12 @@ deps_status=$?
 assert_eq 0 "$deps_status" "Depends divergentes -> ${deps_out}"
 test_case_end
 
+test_case_start "T3_PAIR7_SESSOES_INICIAM_AGENTE_POLKIT" "As sessões Hyprland e Wayfire iniciam o agente do polkit"
+assert_contains "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf" "^exec-once[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O hyprland.conf do compositor deve iniciar o hyprpolkitagent"
+assert_contains "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "^exec-once[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O template hyprland.conf deve iniciar o hyprpolkitagent"
+assert_contains "${WORKSPACE_ROOT}/compositor/wayfire/wayfire.ini" "^polkit[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O wayfire.ini do compositor deve iniciar o hyprpolkitagent"
+assert_contains "${WORKSPACE_ROOT}/packaging/templates/wayfire.ini" "^polkit[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O template wayfire.ini deve iniciar o hyprpolkitagent"
+test_case_end
+
 # Finaliza a suíte
 suite_finish
