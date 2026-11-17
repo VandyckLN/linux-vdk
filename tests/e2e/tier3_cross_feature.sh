@@ -189,6 +189,16 @@ for script in "${WORKSPACE_ROOT}/system/apply-system-tuning.sh" "${WORKSPACE_ROO
 done
 test_case_end
 
+test_case_start "T3_PAIR7_ROOT_ANTES_DO_USUARIO" "Etapas de root do setup-dev-env rodam antes das etapas de usuário"
+setup_script="${WORKSPACE_ROOT}/dev-stack/setup-dev-env.sh"
+last_root_line="$(grep -n 'as_root ' "$setup_script" | tail -n 1 | cut -d: -f1)"
+dotfiles_line="$(grep -nF 'install -m 644 "$ROOT_DIR/dev-stack/kitty/kitty.conf"' "$setup_script" | head -n 1 | cut -d: -f1)"
+mise_line="$(grep -nF 'mise.run' "$setup_script" | head -n 1 | cut -d: -f1)"
+assert_eq "1" "$([[ -n "$last_root_line" && -n "$dotfiles_line" && -n "$mise_line" ]] && echo 1 || echo 0)" "As linhas de referência devem existir no script"
+assert_eq "1" "$([[ "$last_root_line" -lt "$dotfiles_line" ]] && echo 1 || echo 0)" "O último as_root (${last_root_line}) deve vir antes dos dotfiles (${dotfiles_line})"
+assert_eq "1" "$([[ "$last_root_line" -lt "$mise_line" ]] && echo 1 || echo 0)" "O último as_root (${last_root_line}) deve vir antes do mise (${mise_line})"
+test_case_end
+
 test_case_start "T3_PAIR7_PACOTES_NA_LISTA_PERMITIDA" "Todo pacote instalado pelos scripts consta na lista permitida"
 missing_out="$(python3 -I - "${WORKSPACE_ROOT}/dev-stack/setup-dev-env.sh" "${WORKSPACE_ROOT}/dev-stack/packages.list" "${WORKSPACE_ROOT}/system/root-helper/allowed-packages.list" <<'PYEOF' 2>&1
 import shlex

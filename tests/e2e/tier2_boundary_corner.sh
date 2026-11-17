@@ -391,23 +391,29 @@ helper="${WORKSPACE_ROOT}/system/lumen-root-helper"
 # T2-F7-01
 test_case_start "T2_F7_01" "Helper recusa ação desconhecida"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" formatar-disco
+assert_contains "$LAST_CMD_OUTPUT" "ação desconhecida: formatar-disco" "A recusa deve citar a ação desconhecida"
 test_case_end
 
 # T2-F7-02
 test_case_start "T2_F7_02" "Helper recusa pacote fora da lista permitida"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install nmap
+assert_contains "$LAST_CMD_OUTPUT" "pacote não permitido: nmap" "A recusa deve ser por pacote fora da lista"
 test_case_end
 
 # T2-F7-03
 test_case_start "T2_F7_03" "Helper recusa nomes de pacote maliciosos"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install -oAPT::X=1
+assert_contains "$LAST_CMD_OUTPUT" "nome de pacote inválido" "A recusa deve ser por nome inválido"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install 'vim;rm -rf /'
+assert_contains "$LAST_CMD_OUTPUT" "nome de pacote inválido" "A recusa deve ser por nome inválido"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install '../etc'
+assert_contains "$LAST_CMD_OUTPUT" "nome de pacote inválido" "A recusa deve ser por nome inválido"
 test_case_end
 
 # T2-F7-04
 test_case_start "T2_F7_04" "Helper recusa apt-install sem pacotes"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install
+assert_contains "$LAST_CMD_OUTPUT" "apt-install exige ao menos um pacote" "A recusa deve ser por falta de pacotes"
 test_case_end
 
 # T2-F7-05
@@ -422,8 +428,8 @@ test_case_end
 # T2-F7-06
 test_case_start "T2_F7_06" "Dry-run de apt-install mostra update e install"
 assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install git jq
-assert_contains "$LAST_CMD_OUTPUT" "apt-get update" "O dry-run deve mostrar o apt-get update"
-assert_contains "$LAST_CMD_OUTPUT" "apt-get install -y -- git jq" "O dry-run deve mostrar o apt-get install"
+assert_contains "$LAST_CMD_OUTPUT" "apt-get -o DPkg::Lock::Timeout=120 update" "O dry-run deve mostrar o apt-get update com timeout do lock"
+assert_contains "$LAST_CMD_OUTPUT" "apt-get -o DPkg::Lock::Timeout=120 install -y -- git jq" "O dry-run deve mostrar o apt-get install"
 test_case_end
 
 # T2-F7-07: lista com CRLF e espaços nas pontas
@@ -458,18 +464,23 @@ test_case_end
 # T2-F7-11
 test_case_start "T2_F7_11" "system-tune recusa argumento desconhecido"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune --forcar
+assert_contains "$LAST_CMD_OUTPUT" "argumento inválido para system-tune: --forcar" "A recusa deve citar o argumento inválido"
 test_case_end
 
 # T2-F7-12
 test_case_start "T2_F7_12" "docker-group recusa quando não há usuário chamador"
 assert_exit_code 2 env -u SUDO_USER -u PKEXEC_UID LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "não foi possível identificar o usuário chamador" "A recusa deve ser por falta de usuário chamador"
 test_case_end
 
 # T2-F7-13
 test_case_start "T2_F7_13" "docker-group recusa root e usuários de sistema"
 assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=0 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 0 é de root ou de sistema" "A recusa deve ser por UID de sistema"
 assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=1 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 1 é de root ou de sistema" "A recusa deve ser por UID de sistema"
 assert_exit_code 2 env -u PKEXEC_UID SUDO_USER=root LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 0 é de root ou de sistema" "A recusa deve ser por UID de sistema"
 test_case_end
 
 # T2-F7-14
@@ -478,13 +489,21 @@ if [[ "$(id -u)" -lt 1000 ]]; then
     test_case_skip "o UID atual é menor que 1000"
 else
     assert_exit_code 0 env -u SUDO_USER PKEXEC_UID="$(id -u)" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
-    assert_contains "$LAST_CMD_OUTPUT" "usermod -aG docker $(id -un)" "Deve adicionar o usuário do PKEXEC_UID ao grupo docker"
+    assert_contains "$LAST_CMD_OUTPUT" "usermod -aG docker -- $(id -un)" "Deve adicionar o usuário do PKEXEC_UID ao grupo docker"
 fi
 test_case_end
 
 # T2-F7-15
-test_case_start "T2_F7_15" "docker-group ignora argumentos extras"
-assert_exit_code 2 env PKEXEC_UID="$(id -u)" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group root
+test_case_start "T2_F7_15" "docker-group recusa argumentos extras"
+fixed_uid="$(getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 { print $3; exit }')"
+fixed_name=""
+[[ -n "$fixed_uid" ]] && fixed_name="$(getent passwd "$fixed_uid" | cut -d: -f1)"
+if [[ -z "$fixed_uid" ]]; then
+    test_case_skip "não há usuário com UID entre 1000 e 65533"
+else
+    assert_exit_code 2 env -u SUDO_USER PKEXEC_UID="$fixed_uid" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group root
+    assert_contains "$LAST_CMD_OUTPUT" "docker-group não aceita argumentos" "A recusa deve vir do argumento extra"
+fi
 test_case_end
 
 # T2-F7-16
@@ -493,6 +512,46 @@ assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo
 assert_contains "$LAST_CMD_OUTPUT" "https://packages.microsoft.com/keys/microsoft.asc" "Deve usar a URL fixa da chave"
 assert_contains "$LAST_CMD_OUTPUT" "/etc/apt/sources.list.d/vscode.list" "Deve gravar o vscode.list"
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo https://exemplo.invalido
+assert_contains "$LAST_CMD_OUTPUT" "vscode-repo não aceita argumentos" "A recusa deve vir do argumento extra"
+test_case_end
+
+# T2-F7-23
+test_case_start "T2_F7_23" "docker-group prefere PKEXEC_UID ao SUDO_USER"
+if [[ -z "$fixed_uid" ]]; then
+    test_case_skip "não há usuário com UID entre 1000 e 65533"
+else
+    assert_exit_code 0 env PKEXEC_UID="$fixed_uid" SUDO_USER=root LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "usermod -aG docker -- ${fixed_name}" "Deve usar o usuário do PKEXEC_UID, não o SUDO_USER"
+fi
+test_case_end
+
+# T2-F7-24
+test_case_start "T2_F7_24" "docker-group recusa PKEXEC_UID não numérico ou inexistente"
+assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=abc LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "PKEXEC_UID inválido" "A recusa deve ser por UID não numérico"
+if getent passwd 59999 >/dev/null; then
+    test_case_skip "o UID 59999 existe nesta máquina"
+else
+    assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=59999 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "usuário chamador não encontrado" "A recusa deve ser por UID inexistente"
+fi
+test_case_end
+
+# T2-F7-25
+test_case_start "T2_F7_25" "docker-group recusa UID 65534 (nobody)"
+if ! getent passwd 65534 >/dev/null; then
+    test_case_skip "o UID 65534 não existe nesta máquina"
+else
+    assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=65534 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 65534 é reservado \\(nobody e afins; máximo 65533\\)" "A recusa deve ser pelo teto de UID"
+fi
+test_case_end
+
+# T2-F7-26
+test_case_start "T2_F7_26" "Helper cria arquivos com umask 022 mesmo com umask 077 do chamador"
+assert_exit_code 0 bash -c 'umask 077; LUMEN_ROOT_HELPER_DRY_RUN=1 exec "$1" vscode-repo' _ "$helper"
+assert_contains "$LAST_CMD_OUTPUT" "install -m644 [^ ]+ /usr/share/keyrings/packages.microsoft.gpg" "O keyring deve ser instalado com modo explícito 644"
+assert_contains "$LAST_CMD_OUTPUT" "install -m644 [^ ]+ /etc/apt/sources.list.d/vscode.list" "O vscode.list deve ser instalado com modo explícito 644"
 test_case_end
 
 # Mocks de sudo/pkexec para o as_root: ficam na frente do PATH e registram a chamada

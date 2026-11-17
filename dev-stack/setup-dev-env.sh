@@ -63,6 +63,16 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+case "$EDITOR_CHOICE" in
+  ""|neovim|vscode|zed|cursor) ;;
+  *)
+    echo "Editor desconhecido: $EDITOR_CHOICE" >&2
+    exit 1
+    ;;
+esac
+
+# Etapas de root primeiro: assim o polkit pede a senha uma vez só e reaproveita
+# a autorização (cache) nas chamadas seguintes, antes das etapas de usuário.
 if [[ "$INSTALL_CLI" == true ]]; then
   echo "[Dev Stack] Instalando pacotes CLI base..."
   mapfile -t PKGS < <(grep -vE '^\s*(#|$)' "$ROOT_DIR/dev-stack/packages.list")
@@ -72,6 +82,24 @@ if [[ "$INSTALL_CLI" == true ]]; then
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
   fi
 fi
+
+if [[ "$INSTALL_DOCKER" == true ]]; then
+  echo "[Dev Stack] Instalando Docker..."
+  as_root apt-install docker.io docker-compose-v2
+  as_root docker-group
+fi
+
+case "$EDITOR_CHOICE" in
+  neovim)
+    as_root apt-install neovim
+    ;;
+  vscode)
+    echo "[Dev Stack] Instalando Visual Studio Code via repositório Microsoft APT..."
+    as_root apt-install wget gpg
+    as_root vscode-repo
+    as_root apt-install code
+    ;;
+esac
 
 if [[ "$INSTALL_DOTFILES" == true ]]; then
   echo "[Dev Stack] Aplicando dotfiles (Kitty, Starship, tmux, Neovim)..."
@@ -112,33 +140,13 @@ if [[ "$INSTALL_MISE" == true ]]; then
   fi
 fi
 
-if [[ "$INSTALL_DOCKER" == true ]]; then
-  echo "[Dev Stack] Instalando Docker..."
-  as_root apt-install docker.io docker-compose-v2
-  as_root docker-group
-fi
-
 case "$EDITOR_CHOICE" in
-  "") ;;
-  neovim)
-    as_root apt-install neovim
-    ;;
-  vscode)
-    echo "[Dev Stack] Instalando Visual Studio Code via repositório Microsoft APT..."
-    as_root apt-install wget gpg
-    as_root vscode-repo
-    as_root apt-install code
-    ;;
   zed)
     echo "[Dev Stack] Instalando Zed Editor..."
     curl -f https://zed.dev/install.sh | sh
     ;;
   cursor)
     echo "[Dev Stack] Baixe o pacote .deb oficial do Cursor em https://cursor.com/downloads"
-    ;;
-  *)
-    echo "Editor desconhecido: $EDITOR_CHOICE" >&2
-    exit 1
     ;;
 esac
 

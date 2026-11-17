@@ -6,6 +6,8 @@
 # Saída: 0 sucesso, 2 ação/argumento inválido, 3 não é root, outros repassados.
 # LUMEN_ROOT_HELPER_DRY_RUN=1 apenas imprime os comandos (sem exigir root).
 set -euo pipefail
+# Arquivos de sistema criados aqui não podem herdar o umask do chamador.
+umask 022
 
 # O pkexec limpa o ambiente: não depende de PATH, HOME nem do diretório atual.
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
@@ -14,6 +16,8 @@ export DEBIAN_FRONTEND=noninteractive
 
 APT_STAMP="/var/lib/lumen-os/apt-updated.stamp"
 APT_STAMP_MAX_MIN=10
+# Espera até 120 s pelo lock do dpkg (unattended-upgrades o segura no 1º boot).
+APT_LOCK_OPT=(-o DPkg::Lock::Timeout=120)
 PACKAGE_REGEX='^[a-z0-9][a-z0-9+.-]*$'
 
 # Diretório de dados: instalado em /usr/bin usa /usr/share; no checkout, a pasta do script.
@@ -87,14 +91,14 @@ validate_packages() {
 # O apt-get update só roda se o carimbo não existir ou for mais antigo que o limite.
 apt_update_if_stale() {
     if is_dry_run || [[ -z "$(find "$APT_STAMP" -mmin "-${APT_STAMP_MAX_MIN}" 2>/dev/null)" ]]; then
-        run apt-get update
+        run apt-get "${APT_LOCK_OPT[@]}" update
     fi
 }
 
 # Caminho interno de instalação (pacotes já validados e root já exigido).
 apt_install_validated() {
     apt_update_if_stale
-    run apt-get install -y -- "$@"
+    run apt-get "${APT_LOCK_OPT[@]}" install -y -- "$@"
     if ! is_dry_run; then
         mkdir -p "$(dirname "$APT_STAMP")"
         touch "$APT_STAMP"
@@ -144,6 +148,7 @@ resolve_caller_user() {
     fi
     [[ -n "$name" && "$uid" =~ ^[0-9]+$ ]] || die_usage "usuário chamador não encontrado."
     [[ "$uid" -ge 1000 ]] || die_usage "recusado: UID ${uid} é de root ou de sistema (mínimo 1000)."
+    [[ "$uid" -lt 65534 ]] || die_usage "recusado: UID ${uid} é reservado (nobody e afins; máximo 65533)."
     CALLER_USER="$name"
 }
 
@@ -151,7 +156,7 @@ action_docker_group() {
     [[ $# -eq 0 ]] || die_usage "docker-group não aceita argumentos."
     resolve_caller_user
     require_root
-    run usermod -aG docker "$CALLER_USER"
+    run usermod -aG docker -- "$CALLER_USER"
 }
 
 MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
@@ -159,10 +164,15 @@ MS_KEYRING="/usr/share/keyrings/packages.microsoft.gpg"
 VSCODE_LIST="/etc/apt/sources.list.d/vscode.list"
 VSCODE_REPO_URL="https://packages.microsoft.com/repos/code"
 
-fetch_ms_key() { wget -qO- "$MS_KEY_URL" | gpg --dearmor --yes -o "$MS_KEYRING"; }
+# Gera o keyring e o vscode.list em arquivos temporários e só os instala (modo 644)
+# se tudo deu certo: um download falho não sobrescreve um keyring bom.
+VSCODE_TMP=""
+cleanup_vscode_tmp() { [[ -z "$VSCODE_TMP" ]] || rm -rf "$VSCODE_TMP"; }
+
+fetch_ms_key() { wget -qO- "$MS_KEY_URL" | gpg --dearmor --yes -o "$1"; }
 
 write_vscode_list() {
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=${MS_KEYRING}] ${VSCODE_REPO_URL} stable main" > "$VSCODE_LIST"
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=${MS_KEYRING}] ${VSCODE_REPO_URL} stable main" > "$1"
 }
 
 action_vscode_repo() {
@@ -170,13 +180,19 @@ action_vscode_repo() {
     require_root
     if is_dry_run; then
         # Pipes e redirecionamentos: impressos como texto, nada é gravado.
-        log "[dry-run] wget -qO- ${MS_KEY_URL} | gpg --dearmor --yes -o ${MS_KEYRING}"
-        log "[dry-run] echo \"deb [arch=\$(dpkg --print-architecture) signed-by=${MS_KEYRING}] ${VSCODE_REPO_URL} stable main\" > ${VSCODE_LIST}"
+        log "[dry-run] wget -qO- ${MS_KEY_URL} | gpg --dearmor --yes -o <tmp>/packages.microsoft.gpg"
+        log "[dry-run] install -m644 <tmp>/packages.microsoft.gpg ${MS_KEYRING}"
+        log "[dry-run] echo \"deb [arch=\$(dpkg --print-architecture) signed-by=${MS_KEYRING}] ${VSCODE_REPO_URL} stable main\" > <tmp>/vscode.list"
+        log "[dry-run] install -m644 <tmp>/vscode.list ${VSCODE_LIST}"
         log "[dry-run] rm -f ${APT_STAMP}"
         return 0
     fi
-    run fetch_ms_key
-    run write_vscode_list
+    VSCODE_TMP="$(mktemp -d)"
+    trap cleanup_vscode_tmp EXIT
+    run fetch_ms_key "${VSCODE_TMP}/packages.microsoft.gpg"
+    run write_vscode_list "${VSCODE_TMP}/vscode.list"
+    run install -m644 "${VSCODE_TMP}/packages.microsoft.gpg" "$MS_KEYRING"
+    run install -m644 "${VSCODE_TMP}/vscode.list" "$VSCODE_LIST"
     rm -f "$APT_STAMP"
 }
 
