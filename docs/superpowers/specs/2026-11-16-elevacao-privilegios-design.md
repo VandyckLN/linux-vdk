@@ -171,6 +171,13 @@ Os testes entram na suíte E2E existente (`tests/e2e/`), usando `harness.sh` e o
 
 **Teste manual (VM via `scripts/test-iso-qemu.sh`):** abrir o assistente, marcar "Docker" e clicar em "Aplicar". Deve aparecer **uma** janela de senha do polkit e as etapas seguintes não devem pedir a senha de novo. Cancelar a janela deve registrar "Autenticação cancelada" no log.
 
+**Revalidação com a ISO nova (VirtualBox, 2026-11-17):**
+- Boot EFI direto pelo menu do GRUB.
+- Rede cabeada e DNS funcionando sem ajuste manual.
+- `hyprpolkitagent` subindo sozinho, uma instância só, e abrindo a janela com o texto PT-BR da policy sem precisar reiniciar o agente.
+- Depois de `vscode-repo` e `apt-install code` (1.146.0), só existe o `vscode.list` com `signed-by=/usr/share/keyrings/packages.microsoft.gpg`, e o `apt-get update` roda sem conflito de `Signed-By`.
+- Observação da VM, não do produto: com o 3D da VirtualBox desligado, o Hyprland só sobe com `LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=kms_swrast`.
+
 **Critério de pronto:** suíte E2E 100% aprovada (os 4 tiers atuais sem regressão + os casos novos) e o teste manual na VM aprovado.
 
 ## 9. Riscos
