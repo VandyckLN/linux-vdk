@@ -19,3 +19,7 @@ tests/e2e/reports/*.xml
 .DS_Store
 .vscode/
 .idea/
+
+# Worktrees e artefatos de agentes (locais)
+.claude/worktrees/
+.superpowers/
