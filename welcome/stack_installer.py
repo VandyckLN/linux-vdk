@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 import subprocess
 from collections.abc import Callable
@@ -111,6 +112,7 @@ def run_commands(
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                env={**os.environ, "LUMEN_ELEVATE": "pkexec"},
             )
             assert proc.stdout is not None
             for line in proc.stdout:

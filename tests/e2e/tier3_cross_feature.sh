@@ -178,5 +178,73 @@ else
 fi
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F7: Elevação de Privilégios
+# ==============================================================================
+
+test_case_start "T3_PAIR7_SCRIPTS_SEM_SUDO_DIRETO" "Scripts de setup não chamam sudo diretamente"
+for script in "${WORKSPACE_ROOT}/system/apply-system-tuning.sh" "${WORKSPACE_ROOT}/dev-stack/setup-dev-env.sh"; do
+    assert_not_contains "$script" '(^|[^_[:alnum:]])sudo[[:space:]]' "O script não deve chamar sudo diretamente (use as_root)"
+    assert_contains "$script" "system/lib/elevate.sh" "O script deve carregar a biblioteca elevate.sh"
+done
+test_case_end
+
+test_case_start "T3_PAIR7_PACOTES_NA_LISTA_PERMITIDA" "Todo pacote instalado pelos scripts consta na lista permitida"
+missing_out="$(python3 -I - "${WORKSPACE_ROOT}/dev-stack/setup-dev-env.sh" "${WORKSPACE_ROOT}/dev-stack/packages.list" "${WORKSPACE_ROOT}/system/root-helper/allowed-packages.list" <<'PYEOF' 2>&1
+import shlex
+import sys
+
+setup_path, packages_path, allowed_path = sys.argv[1:4]
+
+
+def read_list(path):
+    items = set()
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.replace("\r", "").strip()
+            if line and not line.startswith("#"):
+                items.add(line)
+    return items
+
+
+wanted = read_list(packages_path)
+with open(setup_path, encoding="utf-8") as fh:
+    for raw in fh:
+        line = raw.replace("\r", "").strip()
+        if "as_root apt-install" not in line:
+            continue
+        tokens = shlex.split(line, comments=True)
+        idx = tokens.index("apt-install")
+        for tok in tokens[idx + 1:]:
+            if tok.startswith("$") or tok.startswith('"$') or "${" in tok:
+                continue
+            wanted.add(tok)
+
+missing = sorted(wanted - read_list(allowed_path))
+if missing:
+    print("fora da lista permitida: " + " ".join(missing))
+    sys.exit(1)
+PYEOF
+)"
+missing_status=$?
+assert_eq 0 "$missing_status" "Pacotes ausentes de allowed-packages.list -> ${missing_out}"
+test_case_end
+
+test_case_start "T3_PAIR7_ASSISTENTE_DEFINE_PKEXEC" "O assistente executa os scripts com LUMEN_ELEVATE=pkexec"
+elev_out="$(WORKSPACE_ROOT="$WORKSPACE_ROOT" python3 -I -c '
+import os
+import sys
+
+os.environ.pop("LUMEN_ELEVATE", None)
+sys.path.insert(0, os.environ["WORKSPACE_ROOT"])
+from welcome.stack_installer import run_commands
+
+out = []
+run_commands([["bash", "-c", "echo ELEV=$LUMEN_ELEVATE"]], out.append)
+print("\n".join(out))
+' 2>&1)"
+assert_contains "$elev_out" "ELEV=pkexec" "run_commands deve exportar LUMEN_ELEVATE=pkexec para o comando"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

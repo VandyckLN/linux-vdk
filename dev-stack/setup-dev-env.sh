@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=system/lib/elevate.sh
+source "$ROOT_DIR/system/lib/elevate.sh"
+
 INSTALL_CLI=false
 INSTALL_DOTFILES=false
 INSTALL_MISE=false
@@ -63,8 +66,7 @@ done
 if [[ "$INSTALL_CLI" == true ]]; then
   echo "[Dev Stack] Instalando pacotes CLI base..."
   mapfile -t PKGS < <(grep -vE '^\s*(#|$)' "$ROOT_DIR/dev-stack/packages.list")
-  sudo apt-get update
-  sudo apt-get install -y "${PKGS[@]}"
+  as_root apt-install "${PKGS[@]}"
   if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
     mkdir -p "$HOME/.local/bin"
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
@@ -112,23 +114,20 @@ fi
 
 if [[ "$INSTALL_DOCKER" == true ]]; then
   echo "[Dev Stack] Instalando Docker..."
-  sudo apt-get update
-  sudo apt-get install -y docker.io docker-compose-v2
-  sudo usermod -aG docker "$USER"
+  as_root apt-install docker.io docker-compose-v2
+  as_root docker-group
 fi
 
 case "$EDITOR_CHOICE" in
   "") ;;
   neovim)
-    sudo apt-get install -y neovim
+    as_root apt-install neovim
     ;;
   vscode)
     echo "[Dev Stack] Instalando Visual Studio Code via repositório Microsoft APT..."
-    sudo apt-get install -y wget gpg
-    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/packages.microsoft.gpg >/dev/null
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
-    sudo apt-get update
-    sudo apt-get install -y code
+    as_root apt-install wget gpg
+    as_root vscode-repo
+    as_root apt-install code
     ;;
   zed)
     echo "[Dev Stack] Instalando Zed Editor..."
