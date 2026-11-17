@@ -180,7 +180,7 @@ export DEBIAN_FRONTEND=noninteractive
 echo '$HOSTNAME_LIVE' > /etc/hostname
 apt-get update
 apt-get install -y --no-install-recommends \
-  linux-generic casper discover laptop-detect os-prober \
+  linux-generic linux-headers-generic casper discover laptop-detect os-prober \
   network-manager sudo locales ca-certificates \
   grub-pc-bin grub-efi-amd64-bin shim-signed \
   calamares qml6-module-qtquick-controls

@@ -69,7 +69,7 @@ echo "Raiz do workspace: $WORKSPACE_ROOT"
 echo "Diretório de saída: $OUTPUT_DIR"
 
 # 1. Verificação prévia de dependências
-echo "[1/4] Verificando os pré-requisitos de empacotamento..."
+echo "[1/5] Verificando os pré-requisitos de empacotamento..."
 MISSING_TOOLS=()
 for tool in dpkg-deb gzip awk; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -89,14 +89,14 @@ fi
 
 # 2. Build limpo, se solicitado
 if [[ "$CLEAN_BUILD" == true ]]; then
-    echo "[2/4] Limpando artefatos de build..."
+    echo "[2/5] Limpando artefatos de build..."
     rm -rf "$WORKSPACE_ROOT/dist/build" "$OUTPUT_DIR"
 fi
 
 mkdir -p "$OUTPUT_DIR"
 
 # 3. Gerar os pacotes .deb
-echo "[3/4] Gerando os pacotes Debian modulares..."
+echo "[3/5] Gerando os pacotes Debian modulares..."
 BUILD_SCRIPT="$WORKSPACE_ROOT/packaging/build-debs.sh"
 if [[ ! -x "$BUILD_SCRIPT" ]]; then
     if [[ -f "$BUILD_SCRIPT" ]]; then
@@ -109,9 +109,23 @@ else
     "$BUILD_SCRIPT" "$OUTPUT_DIR"
 fi
 
-# 4. Gerar o índice do repositório local
+# 4. Baixar e conferir os pacotes de terceiros (Mandacaru)
+echo "[4/5] Baixando e conferindo o Mandacaru (EDR)..."
+FETCH_SCRIPT="$WORKSPACE_ROOT/packaging/fetch-third-party.sh"
+if [[ ! -x "$FETCH_SCRIPT" ]]; then
+    if [[ -f "$FETCH_SCRIPT" ]]; then
+        bash "$FETCH_SCRIPT" "$OUTPUT_DIR"
+    else
+        echo "ERRO: script de download de terceiros não encontrado em: $FETCH_SCRIPT" >&2
+        exit 1
+    fi
+else
+    "$FETCH_SCRIPT" "$OUTPUT_DIR"
+fi
+
+# 5. Gerar o índice do repositório local
 if [[ "$SKIP_REPO" == false ]]; then
-    echo "[4/4] Criando o índice do repositório APT offline..."
+    echo "[5/5] Criando o índice do repositório APT offline..."
     REPO_SCRIPT="$WORKSPACE_ROOT/packaging/create-local-repo.sh"
     if [[ ! -x "$REPO_SCRIPT" ]]; then
         if [[ -f "$REPO_SCRIPT" ]]; then
@@ -124,10 +138,10 @@ if [[ "$SKIP_REPO" == false ]]; then
         "$REPO_SCRIPT" "$OUTPUT_DIR"
     fi
 else
-    echo "[4/4] Pulando a criação do índice do repositório (--skip-repo informado)."
+    echo "[5/5] Pulando a criação do índice do repositório (--skip-repo informado)."
 fi
 
-# 5. Resumo do build e manifesto
+# 6. Resumo do build e manifesto
 echo ""
 echo "======================================================================"
 echo " Lumen OS Packaging Build Manifest"
@@ -139,6 +153,7 @@ EXPECTED_PACKAGES=(
     "lumen-dev-stack"
     "lumen-welcome"
     "lumen-desktop"
+    "mandacaru"
 )
 
 ALL_PRESENT=true

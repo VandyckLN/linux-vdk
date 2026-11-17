@@ -306,6 +306,9 @@ need("lumen-compositor", "hyprpolkitagent")
 # Sem os plugins wayland-shell-integration o hyprpolkitagent aborta ao abrir
 # a janela de senha (o pacote do Ubuntu não declara essa dependência).
 need("lumen-compositor", "qt6-wayland")
+# Mandacaru (EDR) com eBPF vem por padrão no desktop.
+need("lumen-desktop", "mandacaru (>= 0.2.0)")
+need("lumen-desktop", "python3-bpfcc")
 
 if errors:
     print("\n".join(errors))
@@ -321,6 +324,23 @@ assert_contains "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf" "^exec-onc
 assert_contains "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "^exec-once[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O template hyprland.conf deve iniciar o hyprpolkitagent"
 assert_contains "${WORKSPACE_ROOT}/compositor/wayfire/wayfire.ini" "^polkit[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O wayfire.ini do compositor deve iniciar o hyprpolkitagent"
 assert_contains "${WORKSPACE_ROOT}/packaging/templates/wayfire.ini" "^polkit[[:space:]]*=[[:space:]]*/usr/libexec/hyprpolkitagent" "O template wayfire.ini deve iniciar o hyprpolkitagent"
+test_case_end
+
+# T3-PAIR8: Mandacaru no repositório local e na ISO
+test_case_start "T3_PAIR8_FETCH_ANTES_DO_INDICE" "package-debs.sh baixa o Mandacaru depois do build e antes do índice"
+order_out="$(python3 -I - "${WORKSPACE_ROOT}/scripts/package-debs.sh" <<'PYEOF' 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+b, f, r = (src.find(x) for x in ("build-debs.sh", "fetch-third-party.sh", "create-local-repo.sh"))
+print("ok" if -1 not in (b, f, r) and b < f < r else f"ordem errada: build={b} fetch={f} repo={r}")
+PYEOF
+)"
+assert_eq "ok" "$order_out" "O fetch deve ficar entre o build-debs.sh e o create-local-repo.sh"
+assert_contains "${WORKSPACE_ROOT}/scripts/package-debs.sh" '"mandacaru"' "O manifesto deve listar o mandacaru"
+test_case_end
+
+test_case_start "T3_PAIR8_ISO_INSTALA_HEADERS" "build-iso.sh instala linux-headers-generic junto do kernel"
+assert_contains "${WORKSPACE_ROOT}/scripts/build-iso.sh" "linux-generic linux-headers-generic" "Os headers do kernel são necessários para o eBPF do Mandacaru"
 test_case_end
 
 # Finaliza a suíte
