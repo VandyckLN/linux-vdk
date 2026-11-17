@@ -402,5 +402,21 @@ else
 fi
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F7: Elevação de Privilégios
+# ==============================================================================
+
+# T1-F7-01: Helper de root
+test_case_start "T1_F7_01" "Helper de root existe, é executável e tem sintaxe bash válida"
+helper="${WORKSPACE_ROOT}/system/lumen-root-helper"
+assert_file_executable "$helper"
+assert_syntax_valid "$helper" "sh"
+test_case_end
+
+# T1-F7-02: Lista de pacotes permitidos
+test_case_start "T1_F7_02" "Lista de pacotes permitidos existe e não está vazia"
+assert_file_not_empty "${WORKSPACE_ROOT}/system/root-helper/allowed-packages.list"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

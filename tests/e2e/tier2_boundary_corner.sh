@@ -383,5 +383,62 @@ else
 fi
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F7: Elevação de Privilégios
+# ==============================================================================
+helper="${WORKSPACE_ROOT}/system/lumen-root-helper"
+
+# T2-F7-01
+test_case_start "T2_F7_01" "Helper recusa ação desconhecida"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" formatar-disco
+test_case_end
+
+# T2-F7-02
+test_case_start "T2_F7_02" "Helper recusa pacote fora da lista permitida"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install nmap
+test_case_end
+
+# T2-F7-03
+test_case_start "T2_F7_03" "Helper recusa nomes de pacote maliciosos"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install -oAPT::X=1
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install 'vim;rm -rf /'
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install '../etc'
+test_case_end
+
+# T2-F7-04
+test_case_start "T2_F7_04" "Helper recusa apt-install sem pacotes"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install
+test_case_end
+
+# T2-F7-05
+test_case_start "T2_F7_05" "Ação válida sem root e sem dry-run sai com 3"
+if [[ "$EUID" -eq 0 ]]; then
+    test_case_skip "a suíte está rodando como root"
+else
+    assert_exit_code 3 env -u LUMEN_ROOT_HELPER_DRY_RUN "$helper" apt-install git
+fi
+test_case_end
+
+# T2-F7-06
+test_case_start "T2_F7_06" "Dry-run de apt-install mostra update e install"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install git jq
+assert_contains "$LAST_CMD_OUTPUT" "apt-get update" "O dry-run deve mostrar o apt-get update"
+assert_contains "$LAST_CMD_OUTPUT" "apt-get install -y git jq" "O dry-run deve mostrar o apt-get install"
+test_case_end
+
+# T2-F7-07: lista com CRLF e espaços nas pontas
+test_case_start "T2_F7_07" "Lista permitida com CRLF e espaços continua reconhecida"
+rh_dir="${SANDBOX_DIR}/rh"
+mkdir -p "${rh_dir}/root-helper"
+cp "$helper" "${rh_dir}/lumen-root-helper"
+printf '# comentário\r\n\r\n  git \r\n' > "${rh_dir}/root-helper/allowed-packages.list"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "${rh_dir}/lumen-root-helper" apt-install git
+test_case_end
+
+# T2-F7-08: ambiente vazio, como no pkexec
+test_case_start "T2_F7_08" "Helper funciona com ambiente vazio, como no pkexec"
+assert_exit_code 0 env -i LUMEN_ROOT_HELPER_DRY_RUN=1 /bin/bash -c 'cd / && exec /bin/bash "$1" apt-install git' _ "$helper"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

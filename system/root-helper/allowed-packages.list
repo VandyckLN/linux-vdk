@@ -1,0 +1,26 @@
+# Pacotes que o lumen-root-helper aceita instalar (um por linha, # para comentários).
+git
+curl
+wget
+ripgrep
+fd-find
+fzf
+jq
+btop
+tmux
+neovim
+build-essential
+ca-certificates
+unzip
+fonts-jetbrains-mono
+systemd-zram-generator
+docker.io
+docker-compose-v2
+gpg
+code
+
+# Reservados para o subprojeto 2 (GitHub + fonte do terminal)
+gh
+fonts-firacode
+fonts-cascadia-code
+fonts-hack
