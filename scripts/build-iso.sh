@@ -189,6 +189,11 @@ apt-get install -y --no-install-recommends \
 echo 'deb [trusted=yes] file:/mnt/debs ./' > /etc/apt/sources.list.d/linux-vdk-local.list
 apt-get update
 apt-get install -y lumen-desktop
+# A ISO nunca sai sem o EDR: um dist/debs antigo (sem mandacaru) cairia aqui.
+dpkg -s mandacaru python3-bpfcc linux-headers-generic >/dev/null || {
+  echo 'ERRO: o Mandacaru (EDR) não foi instalado no chroot. Rode ./scripts/package-debs.sh --clean e gere a ISO de novo.' >&2
+  exit 1
+}
 rm -f /etc/apt/sources.list.d/linux-vdk-local.list
 
 # Copia configuração do Calamares com branding Linux VDK

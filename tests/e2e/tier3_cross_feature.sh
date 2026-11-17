@@ -343,5 +343,19 @@ test_case_start "T3_PAIR8_ISO_INSTALA_HEADERS" "build-iso.sh instala linux-heade
 assert_contains "${WORKSPACE_ROOT}/scripts/build-iso.sh" "linux-generic linux-headers-generic" "Os headers do kernel são necessários para o eBPF do Mandacaru"
 test_case_end
 
+test_case_start "T3_PAIR8_ISO_EXIGE_EDR" "build-iso.sh falha se o Mandacaru não entrar no chroot"
+# Um dist/debs antigo (sem mandacaru) geraria uma ISO sem EDR em silêncio; a spec proíbe.
+edr_out="$(python3 -I - "${WORKSPACE_ROOT}/scripts/build-iso.sh" <<'PYEOF' 2>&1
+import re
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+inst = src.find("apt-get install -y lumen-desktop")
+chk = re.search(r"dpkg -s mandacaru python3-bpfcc linux-headers-generic", src)
+print("ok" if inst != -1 and chk and chk.start() > inst else "falta a checagem dpkg -s depois do install do lumen-desktop")
+PYEOF
+)"
+assert_eq "ok" "$edr_out" "A ISO nunca pode sair sem o Mandacaru"
+test_case_end
+
 # Finaliza a suíte
 suite_finish
