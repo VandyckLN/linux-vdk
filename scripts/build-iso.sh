@@ -157,6 +157,16 @@ deb $UBUNTU_MIRROR $UBUNTU_SUITE-security main restricted universe multiverse
 EOF
 
 cp -L /etc/resolv.conf "$CHROOT_DIR/etc/resolv.conf"
+
+# Igual ao Ubuntu Desktop: sem este netplan, o 10-globally-managed-devices.conf
+# do NetworkManager deixa a rede cabeada "unmanaged" (live e sistema instalado).
+install -d -m755 "$CHROOT_DIR/etc/netplan"
+cat > "$CHROOT_DIR/etc/netplan/01-network-manager-all.yaml" <<'EOF'
+network:
+  version: 2
+  renderer: NetworkManager
+EOF
+chmod 600 "$CHROOT_DIR/etc/netplan/01-network-manager-all.yaml"
 mkdir -p "$CHROOT_DIR/mnt/debs"
 mount --bind "$DEBS_DIR" "$CHROOT_DIR/mnt/debs"
 mount --bind /dev "$CHROOT_DIR/dev"
@@ -215,6 +225,11 @@ cp "$STAGING_DIR/casper/filesystem.manifest" "$STAGING_DIR/casper/filesystem.man
 
 cleanup_mounts
 
+# O resolv.conf do host só servia para o apt dentro do chroot. Se for para a
+# ISO, a sessão live herda o DNS do host (ex.: 10.255.255.254 do WSL) e fica
+# sem resolver nomes; sem ele, o NetworkManager gera o arquivo no boot.
+rm -f "$CHROOT_DIR/etc/resolv.conf"
+
 # 4. Copiar kernel/initrd e compactar rootfs com zstd
 log "Copiando kernel e initrd para staging..."
 cp "$CHROOT_DIR"/boot/vmlinuz-* "$STAGING_DIR/casper/vmlinuz"
@@ -230,6 +245,9 @@ printf "%s\n" "$(du -sx --block-size=1 "$CHROOT_DIR" | cut -f1)" > "$STAGING_DIR
 # 5. Bootloader Dual (UEFI + Legacy BIOS) sem depender de loop devices (compatível com WSL2)
 log "Configurando boot dual UEFI e Legacy BIOS..."
 cat > "$STAGING_DIR/boot/grub/grub.cfg" <<EOF
+# O grub-mkstandalone embute este arquivo num memdisk; sem o search, o root
+# fica no (memdisk) e o GRUB não encontra /casper/vmlinuz na mídia.
+search --no-floppy --set=root --file /casper/filesystem.squashfs
 set default="0"
 set timeout=5
 
