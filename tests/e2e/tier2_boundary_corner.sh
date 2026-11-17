@@ -625,5 +625,121 @@ assert_exit_code 2 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_
 assert_not_contains "$LAST_CMD_OUTPUT" "CONTINUOU" "O chamador com set -e deve abortar"
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F8: Download do Mandacaru (sem rede: URLs file://)
+# ==============================================================================
+fetch="${WORKSPACE_ROOT}/packaging/fetch-third-party.sh"
+fx="${SANDBOX_DIR}/fetch"
+mkdir -p "$fx"
+printf 'deb falso do mandacaru\n' > "$fx/origem.deb"
+fx_sha="$(sha256sum "$fx/origem.deb" | awk '{print $1}')"
+fx_zero="$(printf '0%.0s' {1..64})"
+write_lock() {  # write_lock <arquivo> <url> <sha>
+    printf 'MANDACARU_VERSION=0.2.0\nMANDACARU_URL=%s\nMANDACARU_SHA256=%s\n' "$2" "$3" > "$1"
+}
+reset_fx() { rm -rf "$fx/cache" "$fx/out" "$fx/executou"; }
+run_fetch() {  # run_fetch <código-esperado> <lock> <saída> [VAR=valor...]
+    local esperado="$1" lock_file="$2" saida="$3"
+    shift 3
+    assert_exit_code "$esperado" env MANDACARU_LOCK="$lock_file" LUMEN_CACHE_DIR="$fx/cache" "$@" "$fetch" "$saida"
+}
+deb_final="mandacaru_0.2.0_all.deb"
+
+# T2-F8-01
+test_case_start "T2_F8_01" "Hash certo copia a .deb para a saída e para o cache"
+reset_fx
+write_lock "$fx/ok.lock" "file://$fx/origem.deb" "$fx_sha"
+run_fetch 0 "$fx/ok.lock" "$fx/out"
+assert_file_exists "$fx/out/$deb_final"
+assert_file_exists "$fx/cache/$deb_final"
+assert_exit_code 0 cmp "$fx/origem.deb" "$fx/out/$deb_final"
+test_case_end
+
+# T2-F8-02
+test_case_start "T2_F8_02" "Hash errado falha e não deixa arquivo para trás"
+reset_fx
+write_lock "$fx/errado.lock" "file://$fx/origem.deb" "$fx_zero"
+run_fetch 1 "$fx/errado.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "checksum do mandacaru não confere: esperado ${fx_zero}, obtido ${fx_sha}" "A mensagem deve citar os dois hashes"
+assert_file_not_exists "$fx/out/$deb_final"
+assert_file_not_exists "$fx/cache/$deb_final"
+assert_file_not_exists "$fx/cache/${deb_final}.part"
+test_case_end
+
+# T2-F8-03
+test_case_start "T2_F8_03" "Cache válido é reaproveitado sem baixar"
+reset_fx
+mkdir -p "$fx/cache"
+cp "$fx/origem.deb" "$fx/cache/$deb_final"
+write_lock "$fx/sem-origem.lock" "file://$fx/nao-existe.deb" "$fx_sha"
+run_fetch 0 "$fx/sem-origem.lock" "$fx/out"
+assert_file_exists "$fx/out/$deb_final"
+test_case_end
+
+# T2-F8-04
+test_case_start "T2_F8_04" "Sem origem e sem cache, o download falha com mensagem clara"
+reset_fx
+run_fetch 1 "$fx/sem-origem.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "não foi possível baixar o mandacaru de file://$fx/nao-existe.deb" "A mensagem deve citar a URL"
+test_case_end
+
+# T2-F8-05
+test_case_start "T2_F8_05" "Cache corrompido é baixado de novo e substituído"
+reset_fx
+mkdir -p "$fx/cache"
+printf 'lixo\n' > "$fx/cache/$deb_final"
+run_fetch 0 "$fx/ok.lock" "$fx/out"
+assert_exit_code 0 cmp "$fx/origem.deb" "$fx/cache/$deb_final"
+test_case_end
+
+# T2-F8-06
+test_case_start "T2_F8_06" "Um .part que sobrou não conta como cache"
+reset_fx
+mkdir -p "$fx/cache"
+printf 'lixo\n' > "$fx/cache/${deb_final}.part"
+run_fetch 1 "$fx/sem-origem.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "não foi possível baixar" "O .part não pode ser usado como cache"
+test_case_end
+
+# T2-F8-07
+test_case_start "T2_F8_07" ".lock com fim de linha CRLF funciona"
+reset_fx
+write_lock "$fx/crlf.lock" "file://$fx/origem.deb" "$fx_sha"
+sed -i 's/$/\r/' "$fx/crlf.lock"
+run_fetch 0 "$fx/crlf.lock" "$fx/out"
+assert_file_exists "$fx/out/$deb_final"
+test_case_end
+
+# T2-F8-08
+test_case_start "T2_F8_08" ".lock é lido como dado e nunca executado"
+reset_fx
+write_lock "$fx/inject.lock" "file://$fx/origem.deb" "$fx_sha"
+printf 'MANDACARU_EXTRA=$(touch %s/executou)\n' "$fx" >> "$fx/inject.lock"
+run_fetch 0 "$fx/inject.lock" "$fx/out"
+assert_file_not_exists "$fx/executou"
+test_case_end
+
+# T2-F8-09
+test_case_start "T2_F8_09" "Diretório de saída inexistente é criado"
+reset_fx
+run_fetch 0 "$fx/ok.lock" "$fx/out/nova/pasta"
+assert_file_exists "$fx/out/nova/pasta/$deb_final"
+test_case_end
+
+# T2-F8-10
+test_case_start "T2_F8_10" ".lock sem SHA256 falha dizendo a chave"
+reset_fx
+printf 'MANDACARU_VERSION=0.2.0\nMANDACARU_URL=file://%s/origem.deb\n' "$fx" > "$fx/sem-sha.lock"
+run_fetch 1 "$fx/sem-sha.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "chave ausente no mandacaru.lock: MANDACARU_SHA256" "A mensagem deve citar a chave"
+test_case_end
+
+# T2-F8-11
+test_case_start "T2_F8_11" "SHA256 do ambiente tem precedência sobre o .lock"
+reset_fx
+run_fetch 0 "$fx/errado.lock" "$fx/out" MANDACARU_SHA256="$fx_sha"
+assert_file_exists "$fx/out/$deb_final"
+test_case_end
+
 # Finaliza a suíte
 suite_finish
