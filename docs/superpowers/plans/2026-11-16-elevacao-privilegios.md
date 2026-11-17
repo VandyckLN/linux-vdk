@@ -40,7 +40,7 @@
 
 ---
 
-### Tarefa 1: `lumen-root-helper`: validação, dry-run e `apt-install`
+### Task 1: `lumen-root-helper`: validação, dry-run e `apt-install`
 
 **Arquivos:**
 - Criar: `system/lumen-root-helper` (0755)
@@ -94,7 +94,7 @@ git commit -m "feat(system): lumen-root-helper com validação, dry-run e apt-in
 
 ---
 
-### Tarefa 2: Ações `system-tune`, `docker-group` e `vscode-repo`
+### Task 2: Ações `system-tune`, `docker-group` e `vscode-repo`
 
 **Arquivos:**
 - Modificar: `system/lumen-root-helper`
@@ -138,7 +138,7 @@ git commit -m "feat(system): ações system-tune, docker-group e vscode-repo no 
 
 ---
 
-### Tarefa 3: Função `as_root` (`system/lib/elevate.sh`)
+### Task 3: Função `as_root` (`system/lib/elevate.sh`)
 
 **Arquivos:**
 - Criar: `system/lib/elevate.sh` (0644)
@@ -182,7 +182,7 @@ git commit -m "feat(system): função as_root escolhe entre pkexec e sudo"
 
 ---
 
-### Tarefa 4: Scripts usando `as_root` + `LUMEN_ELEVATE` no assistente
+### Task 4: Scripts usando `as_root` + `LUMEN_ELEVATE` no assistente
 
 **Arquivos:**
 - Modificar: `system/apply-system-tuning.sh` (corpo inteiro)
@@ -232,7 +232,7 @@ git commit -m "refactor: scripts de setup elevam via as_root; assistente usa pke
 
 ---
 
-### Tarefa 5: Policy do polkit e empacotamento
+### Task 5: Policy do polkit e empacotamento
 
 **Arquivos:**
 - Renomear: `packaging/templates/dev.lumenos.welcome.policy` → `packaging/templates/dev.lumenos.root-helper.policy` (e reescrever o conteúdo)
@@ -278,7 +278,7 @@ git commit -m "build(packaging): lumen-system empacota root-helper, elevate.sh e
 
 ---
 
-### Tarefa 6: Agente do polkit nas sessões Hyprland e Wayfire
+### Task 6: Agente do polkit nas sessões Hyprland e Wayfire
 
 **Arquivos:**
 - Modificar: `compositor/hyprland/hyprland.conf`, `packaging/templates/hyprland.conf` (logo após o `exec-once` do shell)
@@ -315,7 +315,7 @@ git commit -m "feat(compositor): inicia hyprpolkitagent nas sessões Hyprland e 
 
 ---
 
-### Tarefa 7: Verificação manual na VM
+### Task 7: Verificação manual na VM
 
 Sem arquivos novos. É o critério de pronto da §8 da spec.
 
