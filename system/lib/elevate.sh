@@ -23,7 +23,8 @@ as_root() {
         pkexec "$helper_bin" "$@" || status=$?
         case "$status" in
             126) echo "Autenticação cancelada. Nada foi alterado." >&2 ;;
-            127) echo "Sem permissão de administrador para esta ação." >&2 ;;
+            # O hyprpolkitagent devolve 127 (não 126) quando a janela é cancelada.
+            127) echo "Autenticação cancelada ou negada. Nada foi alterado." >&2 ;;
         esac
         return "$status"
     fi

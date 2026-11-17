@@ -614,7 +614,7 @@ test_case_start "T2_F7_21" "as_root traduz falta de autorização do pkexec"
 assert_exit_code 127 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=127 LUMEN_ELEVATE=pkexec \
     LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
     bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
-assert_contains "$LAST_CMD_OUTPUT" "Sem permissão de administrador para esta ação." "Deve traduzir o 127"
+assert_contains "$LAST_CMD_OUTPUT" "Autenticação cancelada ou negada. Nada foi alterado." "Deve traduzir o 127 (o hyprpolkitagent devolve 127 ao cancelar)"
 test_case_end
 
 # T2-F7-22
