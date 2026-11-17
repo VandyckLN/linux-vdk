@@ -423,7 +423,7 @@ test_case_end
 test_case_start "T2_F7_06" "Dry-run de apt-install mostra update e install"
 assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install git jq
 assert_contains "$LAST_CMD_OUTPUT" "apt-get update" "O dry-run deve mostrar o apt-get update"
-assert_contains "$LAST_CMD_OUTPUT" "apt-get install -y git jq" "O dry-run deve mostrar o apt-get install"
+assert_contains "$LAST_CMD_OUTPUT" "apt-get install -y -- git jq" "O dry-run deve mostrar o apt-get install"
 test_case_end
 
 # T2-F7-07: lista com CRLF e espaços nas pontas
@@ -438,6 +438,61 @@ test_case_end
 # T2-F7-08: ambiente vazio, como no pkexec
 test_case_start "T2_F7_08" "Helper funciona com ambiente vazio, como no pkexec"
 assert_exit_code 0 env -i LUMEN_ROOT_HELPER_DRY_RUN=1 /bin/bash -c 'cd / && exec /bin/bash "$1" apt-install git' _ "$helper"
+test_case_end
+
+# T2-F7-09
+test_case_start "T2_F7_09" "Dry-run de system-tune --no-snap instala os 3 arquivos de configuração"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune --no-snap
+assert_contains "$LAST_CMD_OUTPUT" "/etc/sysctl.d/99-lumen-dev.conf" "Deve instalar o sysctl"
+assert_contains "$LAST_CMD_OUTPUT" "/etc/systemd/zram-generator.conf" "Deve instalar o zram"
+assert_contains "$LAST_CMD_OUTPUT" "/etc/apt/preferences.d/99-no-snap" "Deve instalar o pin do snap"
+assert_contains "$LAST_CMD_OUTPUT" "${WORKSPACE_ROOT}/system/" "As origens devem vir do diretório system/ do repo"
+test_case_end
+
+# T2-F7-10
+test_case_start "T2_F7_10" "system-tune sem --no-snap não aplica o pin do snap"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune
+assert_not_contains "$LAST_CMD_OUTPUT" "99-no-snap" "Sem --no-snap não pode tocar no pin do snap"
+test_case_end
+
+# T2-F7-11
+test_case_start "T2_F7_11" "system-tune recusa argumento desconhecido"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune --forcar
+test_case_end
+
+# T2-F7-12
+test_case_start "T2_F7_12" "docker-group recusa quando não há usuário chamador"
+assert_exit_code 2 env -u SUDO_USER -u PKEXEC_UID LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+test_case_end
+
+# T2-F7-13
+test_case_start "T2_F7_13" "docker-group recusa root e usuários de sistema"
+assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=0 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=1 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_exit_code 2 env -u PKEXEC_UID SUDO_USER=root LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+test_case_end
+
+# T2-F7-14
+test_case_start "T2_F7_14" "docker-group usa o usuário do PKEXEC_UID"
+if [[ "$(id -u)" -lt 1000 ]]; then
+    test_case_skip "o UID atual é menor que 1000"
+else
+    assert_exit_code 0 env -u SUDO_USER PKEXEC_UID="$(id -u)" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "usermod -aG docker $(id -un)" "Deve adicionar o usuário do PKEXEC_UID ao grupo docker"
+fi
+test_case_end
+
+# T2-F7-15
+test_case_start "T2_F7_15" "docker-group ignora argumentos extras"
+assert_exit_code 2 env PKEXEC_UID="$(id -u)" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group root
+test_case_end
+
+# T2-F7-16
+test_case_start "T2_F7_16" "vscode-repo usa apenas URLs fixas e não aceita argumentos"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo
+assert_contains "$LAST_CMD_OUTPUT" "https://packages.microsoft.com/keys/microsoft.asc" "Deve usar a URL fixa da chave"
+assert_contains "$LAST_CMD_OUTPUT" "/etc/apt/sources.list.d/vscode.list" "Deve gravar o vscode.list"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo https://exemplo.invalido
 test_case_end
 
 # Finaliza a suíte
