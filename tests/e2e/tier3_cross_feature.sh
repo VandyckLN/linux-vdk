@@ -303,6 +303,9 @@ need("lumen-system", "pkexec")
 need("lumen-system", "polkitd")
 need("lumen-dev-stack", "lumen-system (= %s)" % VERSION)
 need("lumen-compositor", "hyprpolkitagent")
+# Sem os plugins wayland-shell-integration o hyprpolkitagent aborta ao abrir
+# a janela de senha (o pacote do Ubuntu não declara essa dependência).
+need("lumen-compositor", "qt6-wayland")
 
 if errors:
     print("\n".join(errors))

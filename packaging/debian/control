@@ -36,7 +36,8 @@ Depends: ${misc:Depends},
          kitty,
          xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr,
          xdg-desktop-portal,
-         hyprpolkitagent
+         hyprpolkitagent,
+         qt6-wayland
 Recommends: wayfire, waybar, wl-clipboard
 Description: Sessão do compositor Wayland do Lumen OS
  Configuração do Hyprland e integração de fallback com o Wayfire, com

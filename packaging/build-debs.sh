@@ -107,7 +107,7 @@ Priority: optional
 Architecture: all
 Maintainer: Lumen OS Developers <contact@lumenos.dev>
 Provides: distro-compositor
-Depends: hyprland (>= 0.53) | wayfire (>= 0.10), lumen-shell (= $VERSION) | distro-shell, kitty, xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr, xdg-desktop-portal, hyprpolkitagent
+Depends: hyprland (>= 0.53) | wayfire (>= 0.10), lumen-shell (= $VERSION) | distro-shell, kitty, xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr, xdg-desktop-portal, hyprpolkitagent, qt6-wayland
 Recommends: wayfire, waybar, wl-clipboard
 Description: Sessão do compositor Wayland do Lumen OS
  Configuração do Hyprland e integração de fallback com o Wayfire, com
