@@ -2,9 +2,9 @@
 # ==============================================================================
 # Lumen OS — Master Debian Packaging Entrypoint
 # ==============================================================================
-# Builds all 6 modular Debian packages and generates the local offline APT
-# repository pool (Packages, Packages.gz, Release).
-# Idempotent, safe, and structured with strict error handling.
+# Gera os 6 pacotes Debian modulares e o pool do repositório APT offline
+# local (Packages, Packages.gz, Release).
+# Idempotente, seguro e estruturado com tratamento de erros estrito.
 # ==============================================================================
 set -euo pipefail
 
@@ -18,16 +18,16 @@ VERBOSE=false
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [OPTIONS]
+Uso: $(basename "$0") [OPÇÕES]
 
-Compile Lumen OS Debian packages and generate the offline APT repository index.
+Compila os pacotes Debian do Lumen OS e gera o índice do repositório APT offline.
 
-Options:
-  --clean              Clean dist/ build directories before compiling
-  --skip-repo          Compile .deb packages but skip repository index generation
-  --output-dir <DIR>   Set destination directory for .deb packages (default: dist/debs)
-  -v, --verbose        Enable verbose output
-  -h, --help           Show this help message and exit
+Opções:
+  --clean              Limpa os diretórios de build em dist/ antes de compilar
+  --skip-repo          Compila os pacotes .deb mas pula a geração do índice do repositório
+  --output-dir <DIR>   Define o diretório de destino dos pacotes .deb (padrão: dist/debs)
+  -v, --verbose        Ativa a saída detalhada
+  -h, --help           Mostra esta ajuda e sai
 
 EOF
 }
@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo "Unknown option: $1" >&2
+            echo "Opção desconhecida: $1" >&2
             usage
             exit 1
             ;;
@@ -65,11 +65,11 @@ done
 echo "======================================================================"
 echo " Lumen OS — Modular Debian Packaging & Repository Generator"
 echo "======================================================================"
-echo "Workspace root: $WORKSPACE_ROOT"
-echo "Output directory: $OUTPUT_DIR"
+echo "Raiz do workspace: $WORKSPACE_ROOT"
+echo "Diretório de saída: $OUTPUT_DIR"
 
-# 1. Pre-flight dependency check
-echo "[1/4] Checking packaging pre-requisites..."
+# 1. Verificação prévia de dependências
+echo "[1/4] Verificando os pré-requisitos de empacotamento..."
 MISSING_TOOLS=()
 for tool in dpkg-deb gzip awk; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -78,56 +78,56 @@ for tool in dpkg-deb gzip awk; do
 done
 
 if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
-    echo "ERROR: Missing required packaging utilities: ${MISSING_TOOLS[*]}" >&2
-    echo "Install with: sudo apt-get install -y dpkg gzip gawk" >&2
+    echo "ERRO: utilitários de empacotamento obrigatórios ausentes: ${MISSING_TOOLS[*]}" >&2
+    echo "Instale com: sudo apt-get install -y dpkg gzip gawk" >&2
     exit 1
 fi
 
 if ! command -v dpkg-scanpackages >/dev/null 2>&1; then
-    echo "Notice: dpkg-scanpackages not found (dpkg-dev not installed). Python 3 fallback will be used."
+    echo "Aviso: dpkg-scanpackages não encontrado (dpkg-dev não instalado). O fallback em Python 3 será usado."
 fi
 
-# 2. Clean build if requested
+# 2. Build limpo, se solicitado
 if [[ "$CLEAN_BUILD" == true ]]; then
-    echo "[2/4] Cleaning build artifacts..."
+    echo "[2/4] Limpando artefatos de build..."
     rm -rf "$WORKSPACE_ROOT/dist/build" "$OUTPUT_DIR"
 fi
 
 mkdir -p "$OUTPUT_DIR"
 
-# 3. Build .deb packages
-echo "[3/4] Building modular Debian packages..."
+# 3. Gerar os pacotes .deb
+echo "[3/4] Gerando os pacotes Debian modulares..."
 BUILD_SCRIPT="$WORKSPACE_ROOT/packaging/build-debs.sh"
 if [[ ! -x "$BUILD_SCRIPT" ]]; then
     if [[ -f "$BUILD_SCRIPT" ]]; then
         bash "$BUILD_SCRIPT" "$OUTPUT_DIR"
     else
-        echo "ERROR: Package build script not found at: $BUILD_SCRIPT" >&2
+        echo "ERRO: script de build de pacotes não encontrado em: $BUILD_SCRIPT" >&2
         exit 1
     fi
 else
     "$BUILD_SCRIPT" "$OUTPUT_DIR"
 fi
 
-# 4. Generate Local Repository Index
+# 4. Gerar o índice do repositório local
 if [[ "$SKIP_REPO" == false ]]; then
-    echo "[4/4] Creating offline APT repository index..."
+    echo "[4/4] Criando o índice do repositório APT offline..."
     REPO_SCRIPT="$WORKSPACE_ROOT/packaging/create-local-repo.sh"
     if [[ ! -x "$REPO_SCRIPT" ]]; then
         if [[ -f "$REPO_SCRIPT" ]]; then
             bash "$REPO_SCRIPT" "$OUTPUT_DIR"
         else
-            echo "ERROR: Repository generator script not found at: $REPO_SCRIPT" >&2
+            echo "ERRO: script gerador do repositório não encontrado em: $REPO_SCRIPT" >&2
             exit 1
         fi
     else
         "$REPO_SCRIPT" "$OUTPUT_DIR"
     fi
 else
-    echo "[4/4] Skipping repository index creation (--skip-repo specified)."
+    echo "[4/4] Pulando a criação do índice do repositório (--skip-repo informado)."
 fi
 
-# 5. Build Summary and Manifest
+# 5. Resumo do build e manifesto
 echo ""
 echo "======================================================================"
 echo " Lumen OS Packaging Build Manifest"
@@ -142,27 +142,27 @@ EXPECTED_PACKAGES=(
 )
 
 ALL_PRESENT=true
-printf "%-20s %-16s %-12s %s\n" "PACKAGE" "VERSION" "SIZE" "SHA256 (first 16)"
+printf "%-20s %-16s %-12s %s\n" "PACOTE" "VERSÃO" "TAMANHO" "SHA256 (16 primeiros)"
 printf "%-20s %-16s %-12s %s\n" "--------------------" "----------------" "------------" "----------------"
 
 for pkg in "${EXPECTED_PACKAGES[@]}"; do
     MATCH=$(find "$OUTPUT_DIR" -maxdepth 1 -name "${pkg}_*.deb" | head -n 1)
     if [[ -n "$MATCH" && -f "$MATCH" ]]; then
-        VER=$(dpkg-deb -f "$MATCH" Version 2>/dev/null || echo "unknown")
-        SZ=$(stat -c%s "$MATCH" 2>/dev/null || echo "unknown")
+        VER=$(dpkg-deb -f "$MATCH" Version 2>/dev/null || echo "desconhecida")
+        SZ=$(stat -c%s "$MATCH" 2>/dev/null || echo "desconhecido")
         CSUM=$(sha256sum "$MATCH" | awk '{print substr($1, 1, 16)}')
         printf "%-20s %-16s %-12s %s\n" "$pkg" "$VER" "${SZ} B" "$CSUM..."
     else
-        printf "%-20s %-16s %-12s %s\n" "$pkg" "MISSING" "-" "-"
+        printf "%-20s %-16s %-12s %s\n" "$pkg" "AUSENTE" "-" "-"
         ALL_PRESENT=false
     fi
 done
 
 echo "======================================================================"
 if [[ "$ALL_PRESENT" == false ]]; then
-    echo "ERROR: One or more expected packages were not built!" >&2
+    echo "ERRO: um ou mais pacotes esperados não foram gerados!" >&2
     exit 1
 fi
 
-echo "Build complete. Output staged at: $OUTPUT_DIR"
+echo "Build concluído. Saída preparada em: $OUTPUT_DIR"
 exit 0

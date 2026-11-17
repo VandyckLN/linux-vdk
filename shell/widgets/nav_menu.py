@@ -1,4 +1,4 @@
-"""Expandable developer navigation menu with submenus."""
+"""Menu de navegação dev expansível com submenus."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from gi.repository import Gtk, Pango  # noqa: E402
 
 @dataclass
 class NavSubItem:
-    """Actionable child item inside an expandable section."""
+    """Item filho acionável dentro de uma seção expansível."""
 
     item_id: str
     label: str
@@ -22,7 +22,7 @@ class NavSubItem:
 
 @dataclass
 class NavSection:
-    """Top-level navigation item in the Curved Glass bar."""
+    """Item de navegação de nível superior na barra Curved Glass."""
 
     section_id: str
     icon: str
@@ -32,7 +32,7 @@ class NavSection:
 
 
 class NavMenu(Gtk.Box):
-    """Renders navigation icons in compact mode and accordion menus when expanded."""
+    """Renderiza ícones de navegação no modo compacto e menus sanfona quando expandido."""
 
     def __init__(
         self,
@@ -152,7 +152,7 @@ class NavMenu(Gtk.Box):
                 sub_btn.remove_css_class("selected")
 
     def set_mode(self, orientation: str, expanded: bool) -> None:
-        """Switches between compact rail, expanded vertical drawer, and horizontal dock."""
+        """Alterna entre trilho compacto, gaveta vertical expandida e dock horizontal."""
         self._orientation = orientation
         self._expanded = expanded
         is_vertical = orientation == "vertical"

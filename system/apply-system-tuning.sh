@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NO_SNAP="${1:-}"
 
-echo "[Lumen OS] Aplicando otimizacoes de sistema (sysctl + zram)..."
+echo "[Lumen OS] Aplicando otimizações de sistema (sysctl + zram)..."
 
 sudo install -Dm644 "$ROOT_DIR/system/sysctl/99-lumen-dev.conf" /etc/sysctl.d/99-lumen-dev.conf
 sudo sysctl --system >/dev/null
@@ -20,4 +20,4 @@ if [[ "$NO_SNAP" == "--no-snap" ]]; then
   sudo install -Dm644 "$ROOT_DIR/system/apt/99-no-snap" /etc/apt/preferences.d/99-no-snap
 fi
 
-echo "[Lumen OS] Otimizacoes aplicadas com sucesso."
+echo "[Lumen OS] Otimizações aplicadas com sucesso."

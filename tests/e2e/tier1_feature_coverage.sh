@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Lumen OS E2E — Tier 1: Feature Coverage (tests/e2e/tier1_feature_coverage.sh)
-# 30 Tests: 5 tests per feature area across F1 to F6
+# Lumen OS E2E — Tier 1: Cobertura de Funcionalidades (tests/e2e/tier1_feature_coverage.sh)
+# 30 Testes: 5 testes por área funcional, de F1 a F6
 # ==============================================================================
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Source common harness
+# Carrega o harness comum
 source "${SCRIPT_DIR}/harness.sh"
 
 suite_init "Tier 1: Feature Coverage (F1 - F6)"
@@ -22,385 +22,385 @@ if [[ -z "${SANDBOX_DIR:-}" ]]; then
 fi
 
 # ==============================================================================
-# FEATURE F1: Modular .deb Packaging (5 tests)
+# FUNCIONALIDADE F1: Empacotamento .deb Modular (5 testes)
 # ==============================================================================
 
-# T1-F1-01: Control File RFC 822 Compliance
-test_case_start "T1_F1_01" "Debian control files RFC 822 structure and metadata"
+# T1-F1-01: Conformidade dos arquivos control com a RFC 822
+test_case_start "T1_F1_01" "Estrutura RFC 822 e metadados dos arquivos control Debian"
 control_file="${WORKSPACE_ROOT}/packaging/debian/control"
 if [[ -f "$control_file" ]]; then
-    assert_contains "$control_file" "Package: lumen-shell" "lumen-shell package stanza required"
-    assert_contains "$control_file" "Package: lumen-compositor" "lumen-compositor package stanza required"
-    assert_contains "$control_file" "Package: lumen-system" "lumen-system package stanza required"
-    assert_contains "$control_file" "Package: lumen-dev-stack" "lumen-dev-stack package stanza required"
-    assert_contains "$control_file" "Package: lumen-welcome" "lumen-welcome package stanza required"
-    assert_contains "$control_file" "Package: lumen-desktop" "lumen-desktop metapackage stanza required"
-    assert_contains "$control_file" "Architecture:" "Architecture field required"
-    assert_contains "$control_file" "Maintainer:" "Maintainer field required"
-    assert_contains "$control_file" "Description:" "Description field required"
+    assert_contains "$control_file" "Package: lumen-shell" "stanza do pacote lumen-shell é obrigatória"
+    assert_contains "$control_file" "Package: lumen-compositor" "stanza do pacote lumen-compositor é obrigatória"
+    assert_contains "$control_file" "Package: lumen-system" "stanza do pacote lumen-system é obrigatória"
+    assert_contains "$control_file" "Package: lumen-dev-stack" "stanza do pacote lumen-dev-stack é obrigatória"
+    assert_contains "$control_file" "Package: lumen-welcome" "stanza do pacote lumen-welcome é obrigatória"
+    assert_contains "$control_file" "Package: lumen-desktop" "stanza do metapacote lumen-desktop é obrigatória"
+    assert_contains "$control_file" "Architecture:" "Campo Architecture é obrigatório"
+    assert_contains "$control_file" "Maintainer:" "Campo Maintainer é obrigatório"
+    assert_contains "$control_file" "Description:" "Campo Description é obrigatório"
 else
-    test_case_skip "packaging/debian/control not yet present"
+    test_case_skip "packaging/debian/control ainda não existe"
 fi
 test_case_end
 
-# T1-F1-02: Filesystem Layout & Binary Mapping
-test_case_start "T1_F1_02" "Binary wrappers and staging directory layout specs"
+# T1-F1-02: Layout do sistema de arquivos e mapeamento de binários
+test_case_start "T1_F1_02" "Especificação dos wrappers binários e do layout do diretório de staging"
 templates_dir="${WORKSPACE_ROOT}/packaging/templates"
 if [[ -d "$templates_dir" ]]; then
-    assert_file_exists "${templates_dir}/lumen-shell" "lumen-shell wrapper template required"
-    assert_file_exists "${templates_dir}/lumen-welcome" "lumen-welcome wrapper template required"
-    assert_file_exists "${templates_dir}/lumen-session-hyprland" "lumen-session-hyprland template required"
-    assert_file_exists "${templates_dir}/lumen-dev-setup" "lumen-dev-setup template required"
-    assert_file_exists "${templates_dir}/lumen-system-tune" "lumen-system-tune template required"
+    assert_file_exists "${templates_dir}/lumen-shell" "Template do wrapper lumen-shell é obrigatório"
+    assert_file_exists "${templates_dir}/lumen-welcome" "Template do wrapper lumen-welcome é obrigatório"
+    assert_file_exists "${templates_dir}/lumen-session-hyprland" "Template lumen-session-hyprland é obrigatório"
+    assert_file_exists "${templates_dir}/lumen-dev-setup" "Template lumen-dev-setup é obrigatório"
+    assert_file_exists "${templates_dir}/lumen-system-tune" "Template lumen-system-tune é obrigatório"
 else
-    test_case_skip "packaging/templates not yet present"
+    test_case_skip "packaging/templates ainda não existe"
 fi
 test_case_end
 
-# T1-F1-03: Package Compilation Script
-test_case_start "T1_F1_03" "Modular Debian build script syntax and executable permissions"
+# T1-F1-03: Script de compilação dos pacotes
+test_case_start "T1_F1_03" "Sintaxe e permissão de execução do script modular de build Debian"
 build_debs_script="${WORKSPACE_ROOT}/packaging/build-debs.sh"
 if [[ -f "$build_debs_script" ]]; then
-    assert_file_executable "$build_debs_script" "build-debs.sh must be executable"
+    assert_file_executable "$build_debs_script" "build-debs.sh deve ser executável"
     assert_syntax_valid "$build_debs_script" "sh"
 else
-    test_case_skip "packaging/build-debs.sh not yet present"
+    test_case_skip "packaging/build-debs.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F1-04: Local APT Repo Generation
-test_case_start "T1_F1_04" "Local APT repository indexer script verification"
+# T1-F1-04: Geração do repositório APT local
+test_case_start "T1_F1_04" "Verificação do script indexador do repositório APT local"
 repo_script="${WORKSPACE_ROOT}/packaging/create-local-repo.sh"
 if [[ -f "$repo_script" ]]; then
-    assert_file_executable "$repo_script" "create-local-repo.sh must be executable"
+    assert_file_executable "$repo_script" "create-local-repo.sh deve ser executável"
     assert_syntax_valid "$repo_script" "sh"
 else
-    test_case_skip "packaging/create-local-repo.sh not yet present"
+    test_case_skip "packaging/create-local-repo.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F1-05: Packaging Convenience Wrapper
-test_case_start "T1_F1_05" "Packaging root wrapper script syntax and permissions"
+# T1-F1-05: Wrapper de conveniência do empacotamento
+test_case_start "T1_F1_05" "Sintaxe e permissões do script wrapper de empacotamento"
 pkg_wrapper="${WORKSPACE_ROOT}/scripts/package-debs.sh"
 if [[ -f "$pkg_wrapper" ]]; then
-    assert_file_executable "$pkg_wrapper" "package-debs.sh must be executable"
+    assert_file_executable "$pkg_wrapper" "package-debs.sh deve ser executável"
     assert_syntax_valid "$pkg_wrapper" "sh"
 else
-    test_case_skip "scripts/package-debs.sh not yet present"
+    test_case_skip "scripts/package-debs.sh ainda não existe"
 fi
 test_case_end
 
 
 # ==============================================================================
-# FEATURE F2: Calamares Installer & Branding (5 tests)
+# FUNCIONALIDADE F2: Instalador Calamares e Branding (5 testes)
 # ==============================================================================
 
-# T1-F2-01: Master Settings Sequence Structure
-test_case_start "T1_F2_01" "Calamares settings.conf sequence and branding definition"
+# T1-F2-01: Estrutura da sequência das configurações mestre
+test_case_start "T1_F2_01" "Sequência e definição de branding do settings.conf do Calamares"
 settings_file="${WORKSPACE_ROOT}/installer/calamares/settings.conf"
 if [[ -f "$settings_file" ]]; then
     assert_syntax_valid "$settings_file" "yaml"
-    assert_contains "$settings_file" "branding:[[:space:]]*lumen" "settings.conf must set branding to lumen"
-    assert_contains "$settings_file" "welcome" "settings sequence must include welcome"
-    assert_contains "$settings_file" "partition" "settings sequence must include partition"
-    assert_contains "$settings_file" "users" "settings sequence must include users"
-    assert_contains "$settings_file" "unpackfs" "settings sequence must include unpackfs"
-    assert_contains "$settings_file" "bootloader" "settings sequence must include bootloader"
+    assert_contains "$settings_file" "branding:[[:space:]]*lumen" "settings.conf deve definir o branding como lumen"
+    assert_contains "$settings_file" "welcome" "A sequência do settings deve incluir welcome"
+    assert_contains "$settings_file" "partition" "A sequência do settings deve incluir partition"
+    assert_contains "$settings_file" "users" "A sequência do settings deve incluir users"
+    assert_contains "$settings_file" "unpackfs" "A sequência do settings deve incluir unpackfs"
+    assert_contains "$settings_file" "bootloader" "A sequência do settings deve incluir bootloader"
 else
-    test_case_skip "installer/calamares/settings.conf not yet present"
+    test_case_skip "installer/calamares/settings.conf ainda não existe"
 fi
 test_case_end
 
-# T1-F2-02: Branding Descriptor Completeness
-test_case_start "T1_F2_02" "Calamares branding.desc metadata and presentation specs"
+# T1-F2-02: Completude do descritor de branding
+test_case_start "T1_F2_02" "Metadados e especificação de apresentação do branding.desc do Calamares"
 branding_desc="${WORKSPACE_ROOT}/installer/calamares/branding/lumen/branding.desc"
 if [[ -f "$branding_desc" ]]; then
     assert_syntax_valid "$branding_desc" "yaml"
-    assert_contains "$branding_desc" "componentName:[[:space:]]*lumen" "componentName must be lumen"
+    assert_contains "$branding_desc" "componentName:[[:space:]]*lumen" "componentName deve ser lumen"
     assert_contains "$branding_desc" "Lumen OS" "Product name must contain Lumen OS"
-    assert_file_exists "$(dirname "$branding_desc")/stylesheet.qss" "Branding directory must contain stylesheet.qss"
-    assert_contains "$branding_desc" "slideshow" "slideshow must be specified in branding descriptor"
+    assert_file_exists "$(dirname "$branding_desc")/stylesheet.qss" "O diretório de branding deve conter stylesheet.qss"
+    assert_contains "$branding_desc" "slideshow" "O slideshow deve estar especificado no descritor de branding"
 else
-    test_case_skip "installer/calamares/branding/lumen/branding.desc not yet present"
+    test_case_skip "installer/calamares/branding/lumen/branding.desc ainda não existe"
 fi
 test_case_end
 
-# T1-F2-03: Curved Glass Qt6 Stylesheet Aesthetic
-test_case_start "T1_F2_03" "Curved Glass Qt6 stylesheet styling and QSS syntax"
+# T1-F2-03: Estética da folha de estilo Qt6 Curved Glass
+test_case_start "T1_F2_03" "Estilo e sintaxe QSS da folha de estilo Qt6 Curved Glass"
 qss_file="${WORKSPACE_ROOT}/installer/calamares/branding/lumen/stylesheet.qss"
 if [[ -f "$qss_file" ]]; then
     assert_syntax_valid "$qss_file" "css"
-    assert_contains "$qss_file" "rgba\(" "QSS must contain rgba translucency definitions"
-    assert_contains "$qss_file" "border-radius" "QSS must define border-radius"
-    assert_contains "$qss_file" "QPushButton" "QSS must style QPushButton"
-    assert_contains "$qss_file" "QProgressBar" "QSS must style QProgressBar"
+    assert_contains "$qss_file" "rgba\(" "O QSS deve conter definições de translucidez rgba"
+    assert_contains "$qss_file" "border-radius" "O QSS deve definir border-radius"
+    assert_contains "$qss_file" "QPushButton" "O QSS deve estilizar QPushButton"
+    assert_contains "$qss_file" "QProgressBar" "O QSS deve estilizar QProgressBar"
 else
-    test_case_skip "installer/calamares/branding/lumen/stylesheet.qss not yet present"
+    test_case_skip "installer/calamares/branding/lumen/stylesheet.qss ainda não existe"
 fi
 test_case_end
 
-# T1-F2-04: Core Module Configurations
-test_case_start "T1_F2_04" "Calamares core module configurations syntax and presence"
+# T1-F2-04: Configurações dos módulos principais
+test_case_start "T1_F2_04" "Sintaxe e presença das configurações dos módulos principais do Calamares"
 modules_dir="${WORKSPACE_ROOT}/installer/calamares/modules"
 if [[ -d "$modules_dir" ]]; then
-    assert_file_exists "${modules_dir}/welcome.conf" "welcome.conf must exist"
-    assert_file_exists "${modules_dir}/partition.conf" "partition.conf must exist"
-    assert_file_exists "${modules_dir}/users.conf" "users.conf must exist"
-    assert_file_exists "${modules_dir}/unpackfs.conf" "unpackfs.conf must exist"
-    assert_file_exists "${modules_dir}/bootloader.conf" "bootloader.conf must exist"
+    assert_file_exists "${modules_dir}/welcome.conf" "welcome.conf deve existir"
+    assert_file_exists "${modules_dir}/partition.conf" "partition.conf deve existir"
+    assert_file_exists "${modules_dir}/users.conf" "users.conf deve existir"
+    assert_file_exists "${modules_dir}/unpackfs.conf" "unpackfs.conf deve existir"
+    assert_file_exists "${modules_dir}/bootloader.conf" "bootloader.conf deve existir"
     assert_syntax_valid "${modules_dir}/welcome.conf" "yaml"
     assert_syntax_valid "${modules_dir}/users.conf" "yaml"
 else
-    test_case_skip "installer/calamares/modules directory not yet present"
+    test_case_skip "Diretório installer/calamares/modules ainda não existe"
 fi
 test_case_end
 
-# T1-F2-05: Postinstall & Wayland Wrapper
-test_case_start "T1_F2_05" "Calamares postinstall hook and Wayland launch script"
+# T1-F2-05: Pós-instalação e wrapper Wayland
+test_case_start "T1_F2_05" "Hook de pós-instalação do Calamares e script de lançamento no Wayland"
 postinstall="${WORKSPACE_ROOT}/installer/calamares/scripts/lumen-postinstall.sh"
 launcher="${WORKSPACE_ROOT}/installer/calamares/scripts/launch-calamares.sh"
 if [[ -f "$postinstall" && -f "$launcher" ]]; then
-    assert_file_executable "$postinstall" "lumen-postinstall.sh must be executable"
-    assert_file_executable "$launcher" "launch-calamares.sh must be executable"
+    assert_file_executable "$postinstall" "lumen-postinstall.sh deve ser executável"
+    assert_file_executable "$launcher" "launch-calamares.sh deve ser executável"
     assert_syntax_valid "$postinstall" "sh"
     assert_syntax_valid "$launcher" "sh"
-    assert_contains "$launcher" "QT_QPA_PLATFORM" "launch script must configure Qt platform"
-    assert_contains "$postinstall" "skel" "postinstall hook must configure skeleton profile"
+    assert_contains "$launcher" "QT_QPA_PLATFORM" "O script de lançamento deve configurar a plataforma Qt"
+    assert_contains "$postinstall" "skel" "O hook de pós-instalação deve configurar o perfil skeleton"
 else
-    test_case_skip "Calamares scripts not yet present"
+    test_case_skip "Scripts do Calamares ainda não existem"
 fi
 test_case_end
 
 
 # ==============================================================================
-# FEATURE F3: ISO Generation Pipeline (5 tests)
+# FUNCIONALIDADE F3: Pipeline de Geração da ISO (5 testes)
 # ==============================================================================
 
-# T1-F3-01: ISO Build Script Syntax & Strict Mode
-test_case_start "T1_F3_01" "ISO build script syntax and strict safety settings"
+# T1-F3-01: Sintaxe e modo estrito do script de build da ISO
+test_case_start "T1_F3_01" "Sintaxe e configurações de segurança estritas do script de build da ISO"
 build_iso_script="${WORKSPACE_ROOT}/scripts/build-iso.sh"
 if [[ -f "$build_iso_script" ]]; then
-    assert_file_executable "$build_iso_script" "build-iso.sh must be executable"
+    assert_file_executable "$build_iso_script" "build-iso.sh deve ser executável"
     assert_syntax_valid "$build_iso_script" "sh"
-    assert_contains "$build_iso_script" "set -e" "build-iso.sh must operate under strict error handling"
+    assert_contains "$build_iso_script" "set -e" "build-iso.sh deve operar com tratamento de erros estrito"
 else
-    test_case_skip "scripts/build-iso.sh not yet present"
+    test_case_skip "scripts/build-iso.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F3-02: Debootstrap Minbase & Mirror Definition
-test_case_start "T1_F3_02" "Debootstrap minbase configuration and mirror definitions"
+# T1-F3-02: Debootstrap minbase e definição de mirror
+test_case_start "T1_F3_02" "Configuração do debootstrap minbase e definições de mirror"
 if [[ -f "$build_iso_script" ]]; then
-    assert_contains "$build_iso_script" "debootstrap" "build-iso.sh must invoke debootstrap"
-    assert_contains "$build_iso_script" "minbase" "build-iso.sh must specify variant minbase"
-    assert_contains "$build_iso_script" "amd64" "build-iso.sh must target amd64 architecture"
+    assert_contains "$build_iso_script" "debootstrap" "build-iso.sh deve invocar o debootstrap"
+    assert_contains "$build_iso_script" "minbase" "build-iso.sh deve especificar a variante minbase"
+    assert_contains "$build_iso_script" "amd64" "build-iso.sh deve ter como alvo a arquitetura amd64"
 else
-    test_case_skip "scripts/build-iso.sh not yet present"
+    test_case_skip "scripts/build-iso.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F3-03: Casper Manifests & Live User Setup
-test_case_start "T1_F3_03" "Casper live session user and package manifest generation"
+# T1-F3-03: Manifestos do Casper e configuração do usuário live
+test_case_start "T1_F3_03" "Usuário da sessão live do Casper e geração do manifesto de pacotes"
 if [[ -f "$build_iso_script" ]]; then
-    assert_contains "$build_iso_script" "filesystem.manifest" "build-iso.sh must generate filesystem manifests"
-    assert_contains "$build_iso_script" "lumen" "build-iso.sh must configure live user lumen"
+    assert_contains "$build_iso_script" "filesystem.manifest" "build-iso.sh deve gerar os manifestos do sistema de arquivos"
+    assert_contains "$build_iso_script" "lumen" "build-iso.sh deve configurar o usuário live lumen"
 else
-    test_case_skip "scripts/build-iso.sh not yet present"
+    test_case_skip "scripts/build-iso.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F3-04: SquashFS Zstandard Compression Specs
-test_case_start "T1_F3_04" "SquashFS zstd compression parameters and block size"
+# T1-F3-04: Especificação da compressão Zstandard do SquashFS
+test_case_start "T1_F3_04" "Parâmetros de compressão zstd e tamanho de bloco do SquashFS"
 if [[ -f "$build_iso_script" ]]; then
-    assert_contains "$build_iso_script" "mksquashfs" "build-iso.sh must call mksquashfs"
-    assert_contains "$build_iso_script" "zstd" "build-iso.sh must specify zstd compression"
+    assert_contains "$build_iso_script" "mksquashfs" "build-iso.sh deve chamar o mksquashfs"
+    assert_contains "$build_iso_script" "zstd" "build-iso.sh deve especificar a compressão zstd"
 else
-    test_case_skip "scripts/build-iso.sh not yet present"
+    test_case_skip "scripts/build-iso.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F3-05: Dual Bootloader & Xorriso Command
-test_case_start "T1_F3_05" "Dual UEFI and legacy BIOS bootloader mastering commands"
+# T1-F3-05: Bootloader duplo e comando do xorriso
+test_case_start "T1_F3_05" "Comandos de masterização do bootloader duplo UEFI e BIOS legado"
 if [[ -f "$build_iso_script" ]]; then
-    assert_contains "$build_iso_script" "xorriso" "build-iso.sh must invoke xorriso"
-    assert_contains "$build_iso_script" "mkisofs" "build-iso.sh must use mkisofs emulation"
-    assert_contains "$build_iso_script" "sha256" "build-iso.sh must compute sha256 checksum"
+    assert_contains "$build_iso_script" "xorriso" "build-iso.sh deve invocar o xorriso"
+    assert_contains "$build_iso_script" "mkisofs" "build-iso.sh deve usar a emulação mkisofs"
+    assert_contains "$build_iso_script" "sha256" "build-iso.sh deve calcular o checksum sha256"
 else
-    test_case_skip "scripts/build-iso.sh not yet present"
+    test_case_skip "scripts/build-iso.sh ainda não existe"
 fi
 test_case_end
 
 
 # ==============================================================================
-# FEATURE F4: GitHub Actions CI Automation (5 tests)
+# FUNCIONALIDADE F4: Automação de CI no GitHub Actions (5 testes)
 # ==============================================================================
 
-# T1-F4-01: CI Workflow Syntax & Triggers
-test_case_start "T1_F4_01" "GitHub Actions workflow YAML syntax and execution triggers"
+# T1-F4-01: Sintaxe e gatilhos do workflow de CI
+test_case_start "T1_F4_01" "Sintaxe YAML e gatilhos de execução do workflow do GitHub Actions"
 workflow_file="${WORKSPACE_ROOT}/.github/workflows/build-iso.yml"
 if [[ -f "$workflow_file" ]]; then
     assert_syntax_valid "$workflow_file" "yaml"
-    assert_contains "$workflow_file" "workflow_dispatch" "CI must support workflow_dispatch trigger"
-    assert_contains "$workflow_file" "push" "CI must trigger on push"
+    assert_contains "$workflow_file" "workflow_dispatch" "O CI deve suportar o gatilho workflow_dispatch"
+    assert_contains "$workflow_file" "push" "O CI deve ser disparado no push"
 else
-    test_case_skip ".github/workflows/build-iso.yml not yet present"
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
 fi
 test_case_end
 
-# T1-F4-02: Runner Disk Cleanup Step
-test_case_start "T1_F4_02" "Runner disk space reclamation commands in CI workflow"
+# T1-F4-02: Etapa de limpeza de disco do runner
+test_case_start "T1_F4_02" "Comandos de recuperação de espaço em disco do runner no workflow de CI"
 if [[ -f "$workflow_file" ]]; then
-    assert_contains "$workflow_file" "Free disk space|Disk space|cleanup|rm -rf" "CI must include disk cleanup step"
+    assert_contains "$workflow_file" "Free disk space|Disk space|cleanup|rm -rf" "O CI deve incluir uma etapa de limpeza de disco"
 else
-    test_case_skip ".github/workflows/build-iso.yml not yet present"
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
 fi
 test_case_end
 
-# T1-F4-03: Host Dependency Installation Step
-test_case_start "T1_F4_03" "Host build dependencies installation step in CI workflow"
+# T1-F4-03: Etapa de instalação das dependências do host
+test_case_start "T1_F4_03" "Etapa de instalação das dependências de build do host no workflow de CI"
 if [[ -f "$workflow_file" ]]; then
-    assert_contains "$workflow_file" "debootstrap" "CI must install debootstrap"
-    assert_contains "$workflow_file" "xorriso" "CI must install xorriso"
-    assert_contains "$workflow_file" "squashfs-tools" "CI must install squashfs-tools"
+    assert_contains "$workflow_file" "debootstrap" "O CI deve instalar o debootstrap"
+    assert_contains "$workflow_file" "xorriso" "O CI deve instalar o xorriso"
+    assert_contains "$workflow_file" "squashfs-tools" "O CI deve instalar o squashfs-tools"
 else
-    test_case_skip ".github/workflows/build-iso.yml not yet present"
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
 fi
 test_case_end
 
-# T1-F4-04: Build Script Execution Sequencing
-test_case_start "T1_F4_04" "Packaging script execution precedes ISO build script in CI"
+# T1-F4-04: Sequência de execução dos scripts de build
+test_case_start "T1_F4_04" "A execução do script de empacotamento precede o script de build da ISO no CI"
 if [[ -f "$workflow_file" ]]; then
-    assert_contains "$workflow_file" "package-debs.sh|build-debs.sh" "CI must execute packaging"
-    assert_contains "$workflow_file" "build-iso.sh" "CI must execute build-iso.sh"
+    assert_contains "$workflow_file" "package-debs.sh|build-debs.sh" "O CI deve executar o empacotamento"
+    assert_contains "$workflow_file" "build-iso.sh" "O CI deve executar o build-iso.sh"
 else
-    test_case_skip ".github/workflows/build-iso.yml not yet present"
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
 fi
 test_case_end
 
-# T1-F4-05: Artifact Upload Specification
-test_case_start "T1_F4_05" "CI artifact upload configuration targeting ISO and checksum"
+# T1-F4-05: Especificação do upload de artefatos
+test_case_start "T1_F4_05" "Configuração do upload de artefatos do CI com a ISO e o checksum"
 if [[ -f "$workflow_file" ]]; then
-    assert_contains "$workflow_file" "upload-artifact" "CI must use upload-artifact action"
+    assert_contains "$workflow_file" "upload-artifact" "O CI deve usar a action upload-artifact"
     assert_contains "$workflow_file" "lumen-os-26.04-amd64.iso" "CI artifact upload must target ISO file"
 else
-    test_case_skip ".github/workflows/build-iso.yml not yet present"
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
 fi
 test_case_end
 
 
 # ==============================================================================
-# FEATURE F5: QEMU Test Script & Runner (5 tests)
+# FUNCIONALIDADE F5: Script e Executor de Testes QEMU (5 testes)
 # ==============================================================================
 
-# T1-F5-01: QEMU Runner Syntax & Help Output
-test_case_start "T1_F5_01" "QEMU test script syntax and CLI help option"
+# T1-F5-01: Sintaxe e saída de ajuda do executor QEMU
+test_case_start "T1_F5_01" "Sintaxe e opção de ajuda da CLI do script de testes QEMU"
 qemu_script="${WORKSPACE_ROOT}/scripts/test-iso-qemu.sh"
 if [[ -f "$qemu_script" ]]; then
-    assert_file_executable "$qemu_script" "test-iso-qemu.sh must be executable"
+    assert_file_executable "$qemu_script" "test-iso-qemu.sh deve ser executável"
     assert_syntax_valid "$qemu_script" "sh"
     assert_exit_code 0 bash "$qemu_script" --help
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F5-02: UEFI Boot Mode Flag Parsing
-test_case_start "T1_F5_02" "QEMU runner UEFI boot mode and OVMF firmware support"
+# T1-F5-02: Parsing da flag de boot UEFI
+test_case_start "T1_F5_02" "Modo de boot UEFI e suporte ao firmware OVMF no executor QEMU"
 if [[ -f "$qemu_script" ]]; then
-    assert_contains "$qemu_script" "uefi" "QEMU script must support --uefi"
-    assert_contains "$qemu_script" "OVMF" "QEMU script must reference OVMF firmware"
+    assert_contains "$qemu_script" "uefi" "O script QEMU deve suportar --uefi"
+    assert_contains "$qemu_script" "OVMF" "O script QEMU deve referenciar o firmware OVMF"
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F5-03: Legacy BIOS Boot Mode Execution
-test_case_start "T1_F5_03" "QEMU runner legacy BIOS boot mode support"
+# T1-F5-03: Execução no modo de boot BIOS legado
+test_case_start "T1_F5_03" "Suporte ao modo de boot BIOS legado no executor QEMU"
 if [[ -f "$qemu_script" ]]; then
-    assert_contains "$qemu_script" "bios" "QEMU script must support --bios"
+    assert_contains "$qemu_script" "bios" "O script QEMU deve suportar --bios"
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F5-04: Headless Mode & Resource Allocation
-test_case_start "T1_F5_04" "QEMU runner headless display and RAM/SMP allocation flags"
+# T1-F5-04: Modo headless e alocação de recursos
+test_case_start "T1_F5_04" "Flags de exibição headless e de alocação de RAM/SMP no executor QEMU"
 if [[ -f "$qemu_script" ]]; then
-    assert_contains "$qemu_script" "headless" "QEMU script must support --headless"
-    assert_contains "$qemu_script" "ram" "QEMU script must support --ram"
-    assert_contains "$qemu_script" "smp" "QEMU script must support --smp"
+    assert_contains "$qemu_script" "headless" "O script QEMU deve suportar --headless"
+    assert_contains "$qemu_script" "ram" "O script QEMU deve suportar --ram"
+    assert_contains "$qemu_script" "smp" "O script QEMU deve suportar --smp"
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
-# T1-F5-05: KVM Detection & TCG Fallback
-test_case_start "T1_F5_05" "Hardware virtualization KVM check with TCG software fallback"
+# T1-F5-05: Detecção de KVM e fallback para TCG
+test_case_start "T1_F5_05" "Verificação de virtualização por hardware (KVM) com fallback para TCG em software"
 if [[ -f "$qemu_script" ]]; then
-    assert_contains "$qemu_script" "/dev/kvm" "QEMU script must check /dev/kvm"
-    assert_contains "$qemu_script" "tcg" "QEMU script must support tcg fallback"
+    assert_contains "$qemu_script" "/dev/kvm" "O script QEMU deve verificar /dev/kvm"
+    assert_contains "$qemu_script" "tcg" "O script QEMU deve suportar o fallback tcg"
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
 
 # ==============================================================================
-# FEATURE F6: Practical User Build Guide (5 tests)
+# FUNCIONALIDADE F6: Guia Prático de Build para o Usuário (5 testes)
 # ==============================================================================
 
-# T1-F6-01: User Guide Presence & Structure
-test_case_start "T1_F6_01" "User build documentation presence and core structural sections"
+# T1-F6-01: Presença e estrutura do guia do usuário
+test_case_start "T1_F6_01" "Presença da documentação de build do usuário e seções estruturais principais"
 guide_file="${WORKSPACE_ROOT}/docs/BUILD_ISO.md"
 if [[ -f "$guide_file" ]]; then
-    assert_file_not_empty "$guide_file" "BUILD_ISO.md must not be empty"
-    assert_contains "$guide_file" "Prerequisite|Requirements" "Docs must cover prerequisites"
-    assert_contains "$guide_file" "WSL2" "Docs must cover WSL2"
-    assert_contains "$guide_file" "GitHub Actions" "Docs must cover GitHub Actions"
+    assert_file_not_empty "$guide_file" "BUILD_ISO.md não pode estar vazio"
+    assert_contains "$guide_file" "Prerequisite|Requirements" "A documentação deve cobrir os pré-requisitos"
+    assert_contains "$guide_file" "WSL2" "A documentação deve cobrir o WSL2"
+    assert_contains "$guide_file" "GitHub Actions" "A documentação deve cobrir o GitHub Actions"
 else
-    test_case_skip "docs/BUILD_ISO.md not yet present"
+    test_case_skip "docs/BUILD_ISO.md ainda não existe"
 fi
 test_case_end
 
-# T1-F6-02: Prerequisites Package Command
-test_case_start "T1_F6_02" "Host system package prerequisites documented in build guide"
+# T1-F6-02: Comando de pacotes de pré-requisito
+test_case_start "T1_F6_02" "Pré-requisitos de pacotes do sistema host documentados no guia de build"
 if [[ -f "$guide_file" ]]; then
-    assert_contains "$guide_file" "debootstrap" "Docs must list debootstrap prerequisite"
-    assert_contains "$guide_file" "xorriso" "Docs must list xorriso prerequisite"
-    assert_contains "$guide_file" "squashfs-tools" "Docs must list squashfs-tools prerequisite"
+    assert_contains "$guide_file" "debootstrap" "A documentação deve listar o pré-requisito debootstrap"
+    assert_contains "$guide_file" "xorriso" "A documentação deve listar o pré-requisito xorriso"
+    assert_contains "$guide_file" "squashfs-tools" "A documentação deve listar o pré-requisito squashfs-tools"
 else
-    test_case_skip "docs/BUILD_ISO.md not yet present"
+    test_case_skip "docs/BUILD_ISO.md ainda não existe"
 fi
 test_case_end
 
-# T1-F6-03: WSL2 Loopless Build Guidance
-test_case_start "T1_F6_03" "WSL2 environment guidance and loop device constraints"
+# T1-F6-03: Orientações de build sem loop no WSL2
+test_case_start "T1_F6_03" "Orientações para o ambiente WSL2 e restrições de loop device"
 if [[ -f "$guide_file" ]]; then
-    assert_contains "$guide_file" "loop|WSL" "Docs must document WSL2 loop device handling"
+    assert_contains "$guide_file" "loop|WSL" "A documentação deve explicar o tratamento de loop device no WSL2"
 else
-    test_case_skip "docs/BUILD_ISO.md not yet present"
+    test_case_skip "docs/BUILD_ISO.md ainda não existe"
 fi
 test_case_end
 
-# T1-F6-04: Executable Snippet Consistency
-test_case_start "T1_F6_04" "Documented commands align with project script entrypoints"
+# T1-F6-04: Consistência dos trechos executáveis
+test_case_start "T1_F6_04" "Os comandos documentados correspondem aos pontos de entrada dos scripts do projeto"
 if [[ -f "$guide_file" ]]; then
-    assert_contains "$guide_file" "build-iso.sh" "Docs must reference build-iso.sh"
-    assert_contains "$guide_file" "package-debs.sh" "Docs must reference package-debs.sh"
+    assert_contains "$guide_file" "build-iso.sh" "A documentação deve referenciar o build-iso.sh"
+    assert_contains "$guide_file" "package-debs.sh" "A documentação deve referenciar o package-debs.sh"
 else
-    test_case_skip "docs/BUILD_ISO.md not yet present"
+    test_case_skip "docs/BUILD_ISO.md ainda não existe"
 fi
 test_case_end
 
-# T1-F6-05: Checksum Verification Guide
-test_case_start "T1_F6_05" "ISO image SHA256 checksum verification instructions in docs"
+# T1-F6-05: Guia de verificação do checksum
+test_case_start "T1_F6_05" "Instruções de verificação do checksum SHA256 da imagem ISO na documentação"
 if [[ -f "$guide_file" ]]; then
-    assert_contains "$guide_file" "sha256sum" "Docs must document sha256sum verification"
+    assert_contains "$guide_file" "sha256sum" "A documentação deve explicar a verificação com sha256sum"
     assert_contains "$guide_file" "lumen-os-26.04-amd64.iso" "Docs must document ISO artifact name"
 else
-    test_case_skip "docs/BUILD_ISO.md not yet present"
+    test_case_skip "docs/BUILD_ISO.md ainda não existe"
 fi
 test_case_end
 
-# Finalize Suite
+# Finaliza a suíte
 suite_finish

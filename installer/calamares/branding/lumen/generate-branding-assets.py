@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Lumen OS — Calamares Branding Asset Generator
-Generates vector (SVG) and genuine raster (PNG) assets for Calamares:
+Lumen OS — Gerador de Assets de Branding do Calamares
+Gera assets vetoriais (SVG) e raster reais (PNG) para o Calamares:
 - logo.svg & logo.png (256x256)
 - icon.svg & icon.png (64x64)
 - welcome-splash.svg & welcome-splash.png (600x320)
 
-Pure Python implementation using standard library (struct, zlib, math).
+Implementação em Python puro usando apenas a biblioteca padrão (struct, zlib, math).
 """
 
 import math
@@ -34,7 +34,7 @@ LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" widt
   <rect width="256" height="256" rx="54" fill="#141822"/>
   <circle cx="128" cy="128" r="90" fill="url(#glow)"/>
   <rect x="24" y="24" width="208" height="208" rx="46" fill="rgba(255,255,255,0.05)" stroke="url(#specularGrad)" stroke-width="2.5"/>
-  <!-- Glowing Lumen Emblem -->
+  <!-- Emblema Lumen brilhante -->
   <path d="M 128 48 C 130 92, 164 126, 208 128 C 164 130, 130 164, 128 208 C 126 164, 92 130, 48 128 C 92 126, 126 92, 128 48 Z" fill="url(#primaryGrad)"/>
   <circle cx="128" cy="128" r="16" fill="#ffffff" opacity="0.9"/>
 </svg>"""
@@ -91,53 +91,53 @@ def make_chunk(tag: bytes, data: bytes) -> bytes:
 
 
 def generate_png_logo(width=256, height=256) -> bytes:
-    """Generate 256x256 RGBA PNG with rounded dark frame and glowing star emblem."""
+    """Gera PNG RGBA 256x256 com moldura escura arredondada e emblema de estrela brilhante."""
     raw = bytearray()
     cx, cy = width / 2.0, height / 2.0
     r_corner = 54.0
 
     for y in range(height):
-        raw.append(0)  # filter type 0
+        raw.append(0)  # tipo de filtro 0
         for x in range(width):
-            # Check rounded rectangle bounds
+            # Verifica os limites do retângulo arredondado
             dx = max(abs(x - cx) - (cx - r_corner), 0.0)
             dy = max(abs(y - cy) - (cy - r_corner), 0.0)
             dist_sq = dx * dx + dy * dy
             if dist_sq > r_corner * r_corner:
-                # Transparent outside rounded rect
+                # Transparente fora do retângulo arredondado
                 raw.extend((0, 0, 0, 0))
                 continue
 
-            # Normalized distance from center
+            # Distância normalizada a partir do centro
             dist_center = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
             nx = abs(x - cx) / cx
             ny = abs(y - cy) / cy
 
-            # Star shape formula: (nx^0.5 + ny^0.5) <= 0.65
+            # Fórmula do formato da estrela: (nx^0.5 + ny^0.5) <= 0.65
             star_val = math.sqrt(nx) + math.sqrt(ny) if nx >= 0 and ny >= 0 else 2.0
 
             if dist_center <= 16:
-                # Center white dot
+                # Ponto branco central
                 raw.extend((255, 255, 255, 245))
             elif star_val <= 0.62:
-                # Star gradient from periwinkle to violet
+                # Gradiente da estrela de periwinkle para violeta
                 t = (x + y) / (width + height)
                 r = int(116 + (169 - 116) * t)
                 g = int(141 + (112 - 141) * t)
                 b = int(255 + (255 - 255) * t)
                 raw.extend((r, g, b, 255))
             elif dist_center <= 90:
-                # Soft glow area
+                # Área de brilho suave
                 glow = max(0.0, 1.0 - (dist_center / 90.0))
                 r = int(20 + 96 * glow)
                 g = int(24 + 117 * glow)
                 b = int(34 + 221 * glow)
                 raw.extend((r, g, b, 255))
             elif abs(max(dx, dy) - r_corner) < 3.0:
-                # Specular border
+                # Borda especular
                 raw.extend((255, 255, 255, 160))
             else:
-                # Dark obsidian base
+                # Base escura obsidiana
                 raw.extend((20, 24, 34, 255))
 
     ihdr = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
@@ -151,13 +151,13 @@ def generate_png_logo(width=256, height=256) -> bytes:
 
 
 def generate_png_icon(width=64, height=64) -> bytes:
-    """Generate 64x64 RGBA PNG with rounded dark frame and central star emblem."""
+    """Gera PNG RGBA 64x64 com moldura escura arredondada e emblema de estrela central."""
     raw = bytearray()
     cx, cy = width / 2.0, height / 2.0
     r_corner = 14.0
 
     for y in range(height):
-        raw.append(0)  # filter type 0
+        raw.append(0)  # tipo de filtro 0
         for x in range(width):
             dx = max(abs(x - cx) - (cx - r_corner), 0.0)
             dy = max(abs(y - cy) - (cy - r_corner), 0.0)
@@ -195,17 +195,17 @@ def generate_png_icon(width=64, height=64) -> bytes:
 
 
 def generate_png_splash(width=600, height=320) -> bytes:
-    """Generate 600x320 RGBA PNG welcome splash banner."""
+    """Gera o banner de boas-vindas em PNG RGBA 600x320."""
     raw = bytearray()
     r_corner = 26.0
 
-    # Star emblem center in splash banner
+    # Centro do emblema de estrela no banner
     star_cx, star_cy = 125.0, 160.0
 
     for y in range(height):
-        raw.append(0)  # filter type 0
+        raw.append(0)  # tipo de filtro 0
         for x in range(width):
-            # Check rounded banner bounds
+            # Verifica os limites do banner arredondado
             dx = max(abs(x - width / 2.0) - (width / 2.0 - r_corner), 0.0)
             dy = max(abs(y - height / 2.0) - (height / 2.0 - r_corner), 0.0)
             dist_sq = dx * dx + dy * dy
@@ -213,18 +213,18 @@ def generate_png_splash(width=600, height=320) -> bytes:
                 raw.extend((0, 0, 0, 0))
                 continue
 
-            # Specular border
+            # Borda especular
             if abs(max(dx, dy) - r_corner) < 2.0:
                 raw.extend((255, 255, 255, 90))
                 continue
 
-            # Star emblem coordinates
+            # Coordenadas do emblema de estrela
             dist_star = math.sqrt((x - star_cx) ** 2 + (y - star_cy) ** 2)
             nx = abs(x - star_cx) / 55.0
             ny = abs(y - star_cy) / 55.0
             star_val = (math.sqrt(nx) + math.sqrt(ny)) if (nx <= 1.0 and ny <= 1.0) else 2.0
 
-            # Ambient curved wave pattern
+            # Padrão ambiente de ondas curvas
             wave1 = math.sin((x * 0.012) + (y * 0.015))
             wave2 = math.cos((x * 0.018) - (y * 0.012))
             is_wave = (abs(wave1) < 0.08) or (abs(wave2) < 0.06)
@@ -246,7 +246,7 @@ def generate_png_splash(width=600, height=320) -> bytes:
             elif is_wave:
                 raw.extend((70, 85, 130, 255))
             else:
-                # Gradient background #0d0f14 to #1a1e27
+                # Fundo em gradiente de #0d0f14 para #1a1e27
                 t_bg = (x + y) / (width + height)
                 r = int(13 + (26 - 13) * t_bg)
                 g = int(15 + (30 - 15) * t_bg)
@@ -266,24 +266,24 @@ def generate_png_splash(width=600, height=320) -> bytes:
 def main():
     BRANDING_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("[Assets] Generating SVGs...")
+    print("[Assets] Gerando SVGs...")
     (BRANDING_DIR / "logo.svg").write_text(LOGO_SVG, encoding="utf-8")
     (BRANDING_DIR / "icon.svg").write_text(ICON_SVG, encoding="utf-8")
     (BRANDING_DIR / "welcome-splash.svg").write_text(SPLASH_SVG, encoding="utf-8")
 
-    print("[Assets] Generating logo.png (256x256)...")
+    print("[Assets] Gerando logo.png (256x256)...")
     logo_png = generate_png_logo(256, 256)
     (BRANDING_DIR / "logo.png").write_bytes(logo_png)
 
-    print("[Assets] Generating icon.png (64x64)...")
+    print("[Assets] Gerando icon.png (64x64)...")
     icon_png = generate_png_icon(64, 64)
     (BRANDING_DIR / "icon.png").write_bytes(icon_png)
 
-    print("[Assets] Generating welcome-splash.png (600x320)...")
+    print("[Assets] Gerando welcome-splash.png (600x320)...")
     splash_png = generate_png_splash(600, 320)
     (BRANDING_DIR / "welcome-splash.png").write_bytes(splash_png)
 
-    print("[Assets] All branding assets successfully generated in:", BRANDING_DIR)
+    print("[Assets] Todos os assets de branding foram gerados com sucesso em:", BRANDING_DIR)
 
 
 if __name__ == "__main__":

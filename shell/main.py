@@ -1,4 +1,4 @@
-"""CLI entrypoint for the Lumen Curved Glass Shell."""
+"""Ponto de entrada CLI do Lumen Curved Glass Shell."""
 
 from __future__ import annotations
 

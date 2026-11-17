@@ -1,4 +1,4 @@
-"""Data-driven installer orchestration for the Welcome Wizard."""
+"""Orquestração do instalador orientada a dados para o Assistente de Boas-Vindas."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ SYSTEM_TUNING_SCRIPT = PROJECT_ROOT / "system" / "apply-system-tuning.sh"
 
 @dataclass(frozen=True)
 class StackOption:
-    """Selectable editor, runtime, or system feature."""
+    """Editor, runtime ou recurso de sistema selecionável."""
 
     option_id: str
     title: str
@@ -25,8 +25,8 @@ class StackOption:
 EDITORS: list[StackOption] = [
     StackOption("neovim", "Neovim", "Leve, direto no terminal com config limpa"),
     StackOption("vscode", "VS Code", "Repositorio oficial Microsoft APT"),
-    StackOption("zed", "Zed Editor", "Editor nativo rapido em Rust"),
-    StackOption("cursor", "Cursor", "Instrucao/download oficial .deb"),
+    StackOption("zed", "Zed Editor", "Editor nativo rápido em Rust"),
+    StackOption("cursor", "Cursor", "Instrução/download oficial .deb"),
 ]
 
 RUNTIMES: list[StackOption] = [
@@ -39,7 +39,7 @@ RUNTIMES: list[StackOption] = [
 
 @dataclass
 class OnboardingSelection:
-    """User choices collected by the First-Boot Wizard."""
+    """Escolhas do usuário coletadas pelo Assistente do 1º Boot."""
 
     orientation: str = "vertical"
     edge: str = "left"
@@ -53,7 +53,7 @@ class OnboardingSelection:
 
 
 def build_commands(sel: OnboardingSelection) -> list[list[str]]:
-    """Translates wizard choices into idempotent shell script invocations."""
+    """Traduz as escolhas do assistente em chamadas idempotentes de scripts de shell."""
     commands: list[list[str]] = []
 
     if sel.apply_system_tuning:
@@ -96,7 +96,7 @@ def run_commands(
     on_log: Callable[[str], None],
     dry_run: bool = False,
 ) -> bool:
-    """Executes setup commands sequentially, streaming stdout/stderr to on_log."""
+    """Executa os comandos de setup em sequência, enviando stdout/stderr para on_log."""
     for cmd in commands:
         printable = " ".join(shlex.quote(part) for part in cmd)
         on_log(f"$ {printable}")
@@ -117,7 +117,7 @@ def run_commands(
                 on_log(line.rstrip())
             code = proc.wait()
             if code != 0:
-                on_log(f"[erro] comando retornou codigo {code}")
+                on_log(f"[erro] comando retornou código {code}")
                 return False
         except OSError as exc:
             on_log(f"[erro] falha ao iniciar comando: {exc}")

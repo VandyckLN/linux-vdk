@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Lumen OS E2E — Tier 3: Cross-Feature Integration (tests/e2e/tier3_cross_feature.sh)
-# 6 Pairwise integration tests validating bilateral architectural contracts
+# Lumen OS E2E — Tier 3: Integração Entre Funcionalidades (tests/e2e/tier3_cross_feature.sh)
+# 6 testes de integração par a par validando contratos arquiteturais bilaterais
 # ==============================================================================
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Source common harness
+# Carrega o harness comum
 source "${SCRIPT_DIR}/harness.sh"
 
 suite_init "Tier 3: Cross-Feature Integration (Pairwise)"
@@ -22,161 +22,161 @@ if [[ -z "${SANDBOX_DIR:-}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# Pair 1: Packaging (F1) <-> Calamares (F2) Alignment
+# Par 1: Alinhamento Empacotamento (F1) <-> Calamares (F2)
 # ------------------------------------------------------------------------------
-test_case_start "T3_PAIR1_PACKAGING_CALAMARES" "Packaging binaries align with Calamares live autostart and post-install hook"
+test_case_start "T3_PAIR1_PACKAGING_CALAMARES" "Os binários empacotados se alinham ao autostart live e ao hook de pós-instalação do Calamares"
 postinstall_script="${WORKSPACE_ROOT}/installer/calamares/scripts/lumen-postinstall.sh"
 launch_script="${WORKSPACE_ROOT}/installer/calamares/scripts/launch-calamares.sh"
 control_file="${WORKSPACE_ROOT}/packaging/debian/control"
 templates_dir="${WORKSPACE_ROOT}/packaging/templates"
 
 if [[ -f "$postinstall_script" && -f "$launch_script" && -f "$control_file" ]]; then
-    # 1. Verify binaries and environment in launch-calamares.sh
-    assert_contains "$launch_script" "calamares" "Launch script must invoke calamares"
-    assert_contains "$launch_script" "WAYLAND_DISPLAY" "Launch script must handle Wayland display"
-    assert_contains "$launch_script" "QT_QPA_PLATFORM" "Launch script must configure Qt Wayland platform"
+    # 1. Verifica os binários e o ambiente no launch-calamares.sh
+    assert_contains "$launch_script" "calamares" "O script de lançamento deve invocar o calamares"
+    assert_contains "$launch_script" "WAYLAND_DISPLAY" "O script de lançamento deve tratar o display Wayland"
+    assert_contains "$launch_script" "QT_QPA_PLATFORM" "O script de lançamento deve configurar a plataforma Qt Wayland"
 
-    # 2. Verify postinstall hook aligns with packaged paths and user structure
-    assert_contains "$postinstall_script" "skel" "Postinstall hook must configure /etc/skel"
-    assert_contains "$postinstall_script" "1000" "Postinstall hook must target UID 1000 user"
+    # 2. Verifica se o hook de pós-instalação se alinha aos caminhos empacotados e à estrutura de usuário
+    assert_contains "$postinstall_script" "skel" "O hook de pós-instalação deve configurar o /etc/skel"
+    assert_contains "$postinstall_script" "1000" "O hook de pós-instalação deve ter como alvo o usuário UID 1000"
 
-    # 3. Verify packages declare expected Lumen components
-    assert_contains "$control_file" "Package: lumen-shell" "Control file must declare lumen-shell"
-    assert_contains "$control_file" "Package: lumen-compositor" "Control file must declare lumen-compositor"
-    assert_contains "$control_file" "Package: lumen-system" "Control file must declare lumen-system"
-    assert_contains "$control_file" "Package: lumen-dev-stack" "Control file must declare lumen-dev-stack"
-    assert_contains "$control_file" "Package: lumen-welcome" "Control file must declare lumen-welcome"
-    assert_contains "$control_file" "Package: lumen-desktop" "Control file must declare lumen-desktop"
+    # 3. Verifica se os pacotes declaram os componentes Lumen esperados
+    assert_contains "$control_file" "Package: lumen-shell" "O arquivo control deve declarar lumen-shell"
+    assert_contains "$control_file" "Package: lumen-compositor" "O arquivo control deve declarar lumen-compositor"
+    assert_contains "$control_file" "Package: lumen-system" "O arquivo control deve declarar lumen-system"
+    assert_contains "$control_file" "Package: lumen-dev-stack" "O arquivo control deve declarar lumen-dev-stack"
+    assert_contains "$control_file" "Package: lumen-welcome" "O arquivo control deve declarar lumen-welcome"
+    assert_contains "$control_file" "Package: lumen-desktop" "O arquivo control deve declarar lumen-desktop"
 
-    # 4. Verify templates provide necessary runtime entrypoints
+    # 4. Verifica se os templates fornecem os pontos de entrada de runtime necessários
     if [[ -d "$templates_dir" ]]; then
-        assert_file_exists "${templates_dir}/lumen-shell" "lumen-shell entrypoint template required"
-        assert_file_exists "${templates_dir}/lumen-session-hyprland" "hyprland session entrypoint required"
-        assert_file_exists "${templates_dir}/lumen-system-tune" "system tune entrypoint required"
+        assert_file_exists "${templates_dir}/lumen-shell" "Template do ponto de entrada lumen-shell é obrigatório"
+        assert_file_exists "${templates_dir}/lumen-session-hyprland" "Ponto de entrada da sessão hyprland é obrigatório"
+        assert_file_exists "${templates_dir}/lumen-system-tune" "Ponto de entrada de ajuste do sistema é obrigatório"
     fi
 else
-    test_case_skip "Calamares or packaging files pending"
+    test_case_skip "Arquivos do Calamares ou de empacotamento pendentes"
 fi
 test_case_end
 
 
 # ------------------------------------------------------------------------------
-# Pair 2: Packaging/Calamares (F1/F2) <-> ISO Builder (F3)
+# Par 2: Empacotamento/Calamares (F1/F2) <-> Gerador da ISO (F3)
 # ------------------------------------------------------------------------------
-test_case_start "T3_PAIR2_PACKAGING_CALAMARES_ISO_BUILDER" "Local repo pool and Calamares configs staged into ISO filesystem"
+test_case_start "T3_PAIR2_PACKAGING_CALAMARES_ISO_BUILDER" "Pool do repositório local e configurações do Calamares preparados no sistema de arquivos da ISO"
 build_iso_script="${WORKSPACE_ROOT}/scripts/build-iso.sh"
 
 if [[ -f "$build_iso_script" ]]; then
-    # 1. Local Repo Ingestion in ISO Builder
-    assert_contains "$build_iso_script" "debs" "ISO builder must stage local package debs"
-    assert_contains "$build_iso_script" "lumen-desktop" "ISO builder must install metapackage lumen-desktop"
+    # 1. Ingestão do repositório local no gerador da ISO
+    assert_contains "$build_iso_script" "debs" "O gerador da ISO deve preparar os debs dos pacotes locais"
+    assert_contains "$build_iso_script" "lumen-desktop" "O gerador da ISO deve instalar o metapacote lumen-desktop"
 
-    # 2. Calamares Config & Branding Staging
-    assert_contains "$build_iso_script" "calamares" "ISO builder must stage Calamares configs"
-    assert_contains "$build_iso_script" "branding" "ISO builder must stage Calamares branding"
-    assert_contains "$build_iso_script" "lumen-postinstall.sh" "ISO builder must stage postinstall script"
+    # 2. Preparação das configurações e do branding do Calamares
+    assert_contains "$build_iso_script" "calamares" "O gerador da ISO deve preparar as configurações do Calamares"
+    assert_contains "$build_iso_script" "branding" "O gerador da ISO deve preparar o branding do Calamares"
+    assert_contains "$build_iso_script" "lumen-postinstall.sh" "O gerador da ISO deve preparar o script de pós-instalação"
 
-    # 3. Live Casper Autostart Staging
-    assert_contains "$build_iso_script" "launch-calamares.sh" "ISO builder must stage live autostart launcher"
+    # 3. Preparação do autostart live do Casper
+    assert_contains "$build_iso_script" "launch-calamares.sh" "O gerador da ISO deve preparar o lançador de autostart live"
 else
-    test_case_skip "scripts/build-iso.sh not yet present"
+    test_case_skip "scripts/build-iso.sh ainda não existe"
 fi
 test_case_end
 
 
 # ------------------------------------------------------------------------------
-# Pair 3: ISO Builder (F3) <-> CI Automation (F4)
+# Par 3: Gerador da ISO (F3) <-> Automação de CI (F4)
 # ------------------------------------------------------------------------------
-test_case_start "T3_PAIR3_ISO_BUILDER_CI_WORKFLOW" "CI workflow steps, dependencies, and artifacts align with ISO build pipeline"
+test_case_start "T3_PAIR3_ISO_BUILDER_CI_WORKFLOW" "Etapas, dependências e artefatos do workflow de CI se alinham ao pipeline de build da ISO"
 workflow_file="${WORKSPACE_ROOT}/.github/workflows/build-iso.yml"
 
 if [[ -f "$workflow_file" ]]; then
-    # 1. Workflow Triggers
-    assert_contains "$workflow_file" "workflow_dispatch" "CI must support manual trigger"
+    # 1. Gatilhos do workflow
+    assert_contains "$workflow_file" "workflow_dispatch" "O CI deve suportar o gatilho manual"
 
-    # 2. Sequential Build Step Invocations
-    assert_contains "$workflow_file" "package-debs.sh|build-debs.sh" "CI must execute packaging"
-    assert_contains "$workflow_file" "build-iso.sh" "CI must execute build-iso.sh"
+    # 2. Invocações sequenciais das etapas de build
+    assert_contains "$workflow_file" "package-debs.sh|build-debs.sh" "O CI deve executar o empacotamento"
+    assert_contains "$workflow_file" "build-iso.sh" "O CI deve executar o build-iso.sh"
 
-    # 3. Dependency Installation
-    assert_contains "$workflow_file" "debootstrap" "CI must install debootstrap"
-    assert_contains "$workflow_file" "xorriso" "CI must install xorriso"
-    assert_contains "$workflow_file" "squashfs-tools" "CI must install squashfs-tools"
+    # 3. Instalação das dependências
+    assert_contains "$workflow_file" "debootstrap" "O CI deve instalar o debootstrap"
+    assert_contains "$workflow_file" "xorriso" "O CI deve instalar o xorriso"
+    assert_contains "$workflow_file" "squashfs-tools" "O CI deve instalar o squashfs-tools"
 
-    # 4. Artifact Output & Checksum Contract
+    # 4. Contrato de saída de artefatos e checksum
     assert_contains "$workflow_file" "lumen-os-26.04-amd64.iso" "CI artifact upload must target ISO output"
-    assert_contains "$workflow_file" "upload-artifact" "CI must upload ISO artifact"
+    assert_contains "$workflow_file" "upload-artifact" "O CI deve publicar o artefato da ISO"
 else
-    test_case_skip ".github/workflows/build-iso.yml not yet present"
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
 fi
 test_case_end
 
 
 # ------------------------------------------------------------------------------
-# Pair 4: ISO Builder (F3) <-> QEMU Runner (F5)
+# Par 4: Gerador da ISO (F3) <-> Executor QEMU (F5)
 # ------------------------------------------------------------------------------
-test_case_start "T3_PAIR4_ISO_BUILDER_QEMU_RUNNER" "QEMU runner validates default ISO path, UEFI/BIOS dual boot, and test disk"
+test_case_start "T3_PAIR4_ISO_BUILDER_QEMU_RUNNER" "O executor QEMU valida o caminho padrão da ISO, o dual boot UEFI/BIOS e o disco de teste"
 qemu_script="${WORKSPACE_ROOT}/scripts/test-iso-qemu.sh"
 
 if [[ -f "$qemu_script" ]]; then
-    # 1. Default ISO Path Agreement
-    assert_contains "$qemu_script" "lumen-os-26.04-amd64.iso" "QEMU runner default ISO must match build-iso.sh output"
+    # 1. Concordância do caminho padrão da ISO
+    assert_contains "$qemu_script" "lumen-os-26.04-amd64.iso" "A ISO padrão do executor QEMU deve corresponder à saída do build-iso.sh"
 
-    # 2. Dual Boot Support
-    assert_contains "$qemu_script" "uefi" "QEMU runner must support --uefi boot"
-    assert_contains "$qemu_script" "bios" "QEMU runner must support --bios boot"
-    assert_contains "$qemu_script" "OVMF" "QEMU runner must support OVMF firmware"
+    # 2. Suporte a dual boot
+    assert_contains "$qemu_script" "uefi" "O executor QEMU deve suportar boot --uefi"
+    assert_contains "$qemu_script" "bios" "O executor QEMU deve suportar boot --bios"
+    assert_contains "$qemu_script" "OVMF" "O executor QEMU deve suportar o firmware OVMF"
 
-    # 3. Test Disk Provisioning for Installer Testing
-    assert_contains "$qemu_script" "qemu-img|create-disk|drive" "QEMU runner must support test disk provisioning"
+    # 3. Provisionamento do disco de teste para testar o instalador
+    assert_contains "$qemu_script" "qemu-img|create-disk|drive" "O executor QEMU deve suportar o provisionamento de disco de teste"
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
 
 # ------------------------------------------------------------------------------
-# Pair 5: Packaging/ISO (F1/F3) <-> Documentation (F6)
+# Par 5: Empacotamento/ISO (F1/F3) <-> Documentação (F6)
 # ------------------------------------------------------------------------------
-test_case_start "T3_PAIR5_PACKAGING_ISO_DOCUMENTATION" "User documentation references real script paths, flags, and outputs"
+test_case_start "T3_PAIR5_PACKAGING_ISO_DOCUMENTATION" "A documentação do usuário referencia caminhos, flags e saídas reais dos scripts"
 doc_file="${WORKSPACE_ROOT}/docs/BUILD_ISO.md"
 
 if [[ -f "$doc_file" ]]; then
-    # 1. Script Path Consistency in Docs
-    assert_contains "$doc_file" "package-debs.sh" "Docs must reference package-debs.sh"
-    assert_contains "$doc_file" "build-iso.sh" "Docs must reference build-iso.sh"
-    assert_contains "$doc_file" "test-iso-qemu.sh" "Docs must reference test-iso-qemu.sh"
+    # 1. Consistência dos caminhos de scripts na documentação
+    assert_contains "$doc_file" "package-debs.sh" "A documentação deve referenciar o package-debs.sh"
+    assert_contains "$doc_file" "build-iso.sh" "A documentação deve referenciar o build-iso.sh"
+    assert_contains "$doc_file" "test-iso-qemu.sh" "A documentação deve referenciar o test-iso-qemu.sh"
 
-    # 2. Prerequisite Completeness
-    assert_contains "$doc_file" "debootstrap" "Docs must list debootstrap prerequisite"
-    assert_contains "$doc_file" "squashfs-tools" "Docs must list squashfs-tools prerequisite"
-    assert_contains "$doc_file" "xorriso" "Docs must list xorriso prerequisite"
+    # 2. Completude dos pré-requisitos
+    assert_contains "$doc_file" "debootstrap" "A documentação deve listar o pré-requisito debootstrap"
+    assert_contains "$doc_file" "squashfs-tools" "A documentação deve listar o pré-requisito squashfs-tools"
+    assert_contains "$doc_file" "xorriso" "A documentação deve listar o pré-requisito xorriso"
 
-    # 3. Output Path Matching
-    assert_contains "$doc_file" "lumen-os-26.04-amd64.iso" "Docs must document correct ISO filename"
+    # 3. Correspondência do caminho de saída
+    assert_contains "$doc_file" "lumen-os-26.04-amd64.iso" "A documentação deve informar o nome de arquivo correto da ISO"
 else
-    test_case_skip "docs/BUILD_ISO.md not yet present"
+    test_case_skip "docs/BUILD_ISO.md ainda não existe"
 fi
 test_case_end
 
 
 # ------------------------------------------------------------------------------
-# Pair 6: Calamares (F2) <-> QEMU Runner (F5)
+# Par 6: Calamares (F2) <-> Executor QEMU (F5)
 # ------------------------------------------------------------------------------
-test_case_start "T3_PAIR6_CALAMARES_QEMU_ENVIRONMENT" "QEMU runner provides Wayland virtual graphics, sufficient RAM, and headless mode"
+test_case_start "T3_PAIR6_CALAMARES_QEMU_ENVIRONMENT" "O executor QEMU fornece gráficos virtuais para Wayland, RAM suficiente e modo headless"
 if [[ -f "$qemu_script" ]]; then
-    # 1. RAM Allocation parameter
-    assert_contains "$qemu_script" "ram" "QEMU runner must support RAM parameter"
+    # 1. Parâmetro de alocação de RAM
+    assert_contains "$qemu_script" "ram" "O executor QEMU deve suportar o parâmetro de RAM"
 
-    # 2. Virtual Graphics Support for Wayland / KMS
-    assert_contains "$qemu_script" "virtio|vga|gpu" "QEMU runner must configure graphics adapter"
+    # 2. Suporte a gráficos virtuais para Wayland / KMS
+    assert_contains "$qemu_script" "virtio|vga|gpu" "O executor QEMU deve configurar o adaptador gráfico"
 
-    # 3. Headless Support for Automated CI Testing
-    assert_contains "$qemu_script" "headless" "QEMU runner must support --headless flag"
+    # 3. Suporte a headless para testes automatizados no CI
+    assert_contains "$qemu_script" "headless" "O executor QEMU deve suportar a flag --headless"
 else
-    test_case_skip "scripts/test-iso-qemu.sh not yet present"
+    test_case_skip "scripts/test-iso-qemu.sh ainda não existe"
 fi
 test_case_end
 
-# Finalize Suite
+# Finaliza a suíte
 suite_finish

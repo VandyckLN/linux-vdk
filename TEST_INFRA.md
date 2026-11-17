@@ -1,69 +1,69 @@
-# E2E Test Infra: Lumen OS Distro Packaging & ISO Pipeline
+# Infra de Testes E2E: Empacotamento da Distro e Pipeline de ISO do Lumen OS
 
-## Test Philosophy
-- **Requirement-Driven & Opaque-Box**: Derive test assertions strictly from user requirements in `ORIGINAL_REQUEST.md` (R1-R6) and architectural interfaces in `PROJECT.md`, treating implementation internals as a black box.
-- **Hermetic & Non-Destructive**: E2E tests must be capable of executing in normal CI or developer environments without requiring root privileges (using mock chroot/fixtures or safe validation flags where appropriate), without modifying host system packages, and without interfering with the active development workspace.
-- **Progressive Testability**: Verification must not require features more complex than the tested feature. Tier 1 works against early milestone artifacts and isolated interfaces.
-- **Zero-Failure & Deterministic**: Full test suite must produce predictable, deterministic exit codes (0 for pass, non-zero for any failure) with colored, standardized terminal output and machine-readable logs.
+## Filosofia de Testes
+- **Orientada a Requisitos e Caixa-Preta**: As asserções dos testes derivam estritamente dos requisitos do usuário em `ORIGINAL_REQUEST.md` (R1-R6) e das interfaces arquiteturais em `PROJECT.md`, tratando os detalhes internos da implementação como uma caixa-preta.
+- **Hermética e Não Destrutiva**: Os testes E2E devem rodar em ambientes normais de CI ou de desenvolvimento sem exigir privilégios de root (usando chroot simulado/fixtures ou flags de validação seguras quando apropriado), sem modificar os pacotes do sistema host e sem interferir no workspace de desenvolvimento ativo.
+- **Testabilidade Progressiva**: A verificação não deve exigir funcionalidades mais complexas do que a funcionalidade testada. O Tier 1 funciona com os artefatos dos primeiros marcos e com interfaces isoladas.
+- **Zero Falhas e Determinística**: A suíte completa deve produzir códigos de saída previsíveis e determinísticos (0 para sucesso, diferente de zero para qualquer falha), com saída de terminal colorida e padronizada e logs legíveis por máquina.
 
-## Feature Inventory & Requirement Mapping
-| # | Feature Area | Requirement Source | Key Verification Scope |
-|---|--------------|-------------------|------------------------|
-| F1 | Modular .deb Packaging | R1, Project §M1 | Recipe validity, control files, dependencies, build script syntax, local repo indexing |
-| F2 | Calamares Installer & Branding | R2, Project §M2 | `settings.conf` sequence, QSS Curved Glass theme, branding.desc, QML slideshow, postinstall hook |
-| F3 | ISO Generation Pipeline | R3, Project §M3 | Idempotent `build-iso.sh`, debootstrap minbase parameters, casper manifests, squashfs zstd options, dual UEFI/BIOS GRUB layout, xorriso arguments |
-| F4 | GitHub Actions CI Automation | R4, Project §M4 | `.github/workflows/build-iso.yml` syntax, workflow_dispatch triggers, disk cleanup steps, caching, artifact upload specs |
-| F5 | QEMU Test Script & Runner | R5, Project §M4 | `test-iso-qemu.sh` flag parsing (`--uefi`, `--bios`, `--headless`, `--ram`, `--smp`), KVM fallback to TCG, OVMF firmware lookup |
-| F6 | Practical User Build Guide | R6, Project §M4 | `docs/BUILD_ISO.md` presence, prerequisite commands, step-by-step local build commands, WSL2 guidance, troubleshooting section |
+## Inventário de Funcionalidades e Mapeamento de Requisitos
+| # | Área Funcional | Origem do Requisito | Escopo Principal de Verificação |
+|---|----------------|---------------------|---------------------------------|
+| F1 | Empacotamento .deb Modular | R1, Projeto §M1 | Validade das receitas, arquivos control, dependências, sintaxe do script de build, indexação do repositório local |
+| F2 | Instalador Calamares e Branding | R2, Projeto §M2 | Sequência do `settings.conf`, tema QSS Curved Glass, branding.desc, slideshow QML, hook de pós-instalação |
+| F3 | Pipeline de Geração da ISO | R3, Projeto §M3 | `build-iso.sh` idempotente, parâmetros do debootstrap minbase, manifestos do casper, opções zstd do squashfs, layout GRUB dual UEFI/BIOS, argumentos do xorriso |
+| F4 | Automação de CI no GitHub Actions | R4, Projeto §M4 | Sintaxe do `.github/workflows/build-iso.yml`, gatilhos workflow_dispatch, etapas de limpeza de disco, cache, especificação de upload de artefatos |
+| F5 | Script e Executor de Testes QEMU | R5, Projeto §M4 | Parsing das flags do `test-iso-qemu.sh` (`--uefi`, `--bios`, `--headless`, `--ram`, `--smp`), fallback de KVM para TCG, localização do firmware OVMF |
+| F6 | Guia Prático de Build para o Usuário | R6, Projeto §M4 | Presença do `docs/BUILD_ISO.md`, comandos de pré-requisitos, comandos de build local passo a passo, orientações para WSL2, seção de solução de problemas |
 
-## Test Architecture & Layout
+## Arquitetura e Estrutura dos Testes
 ```
 tests/e2e/
-├── run-e2e-tests.sh               # Unified Master Test Runner
-├── harness.sh                     # Common assertions, colors, logging, test runner helpers
-├── fixtures/                      # Sample inputs, mock debian directories, synthetic configs
-├── tier1_feature_coverage.sh      # Tier 1: Isolated happy-path feature coverage (>=5 tests / feature)
-├── tier2_boundary_corner.sh       # Tier 2: Boundary, invalid input & error handling (>=5 tests / feature)
-├── tier3_cross_feature.sh         # Tier 3: Pairwise cross-module integration tests
-└── tier4_real_world.sh            # Tier 4: End-to-end user workflows and realistic application scenarios
+├── run-e2e-tests.sh               # Executor mestre unificado dos testes
+├── harness.sh                     # Asserções comuns, cores, logs e auxiliares do executor
+├── fixtures/                      # Entradas de exemplo, diretórios debian simulados, configs sintéticas
+├── tier1_feature_coverage.sh      # Tier 1: Cobertura isolada do caminho feliz (>=5 testes / funcionalidade)
+├── tier2_boundary_corner.sh       # Tier 2: Limites, entradas inválidas e tratamento de erros (>=5 testes / funcionalidade)
+├── tier3_cross_feature.sh         # Tier 3: Testes de integração entre módulos, par a par
+└── tier4_real_world.sh            # Tier 4: Fluxos de ponta a ponta do usuário e cenários realistas
 ```
 
-## Invocation & Pass/Fail Semantics
-- Command: `bash tests/e2e/run-e2e-tests.sh`
-- Optional Flags:
-  - `--tier <1|2|3|4|all>`: Run specific test tier (defaults to all)
-  - `--verbose`: Display full subtest output
-  - `--quiet`: Minimal summary output
-  - `--log <path>`: Write test execution log to designated file
-- Exit code:
-  - `0`: All tests passed
-  - `1`: One or more test assertions failed
-  - `2`: Invalid argument or test environment setup failure
+## Invocação e Semântica de Sucesso/Falha
+- Comando: `bash tests/e2e/run-e2e-tests.sh`
+- Flags opcionais:
+  - `--tier <1|2|3|4|all>`: Executa um tier específico (padrão: all)
+  - `--verbose`: Exibe a saída completa dos subtestes
+  - `--quiet`: Saída de resumo mínima
+  - `--log <caminho>`: Grava o log de execução dos testes no arquivo indicado
+- Código de saída:
+  - `0`: Todos os testes passaram
+  - `1`: Uma ou mais asserções falharam
+  - `2`: Argumento inválido ou falha na preparação do ambiente de testes
 
-## Test Case Design Methodology
-1. **Tier 1 — Feature Coverage (>=5 tests per feature)**:
-   - Validates existence, structure, syntactic validity, mandatory keywords, and operational interfaces for F1 through F6.
-   - Target: >= 30 test cases.
-2. **Tier 2 — Boundary & Corner Cases (>=5 tests per feature)**:
-   - Missing configuration files, corrupt syntax, invalid flags, missing dependencies, permissions, dry-run edge cases.
-   - Target: >= 30 test cases.
-3. **Tier 3 — Cross-Feature Combinations (Pairwise Coverage)**:
-   - F1 ↔ F2: Package binaries and desktop files matching Calamares autostart & postinstall hooks.
-   - F1/F2 ↔ F3: ISO builder correctly ingesting local APT repo and staging Calamares branding/modules into live-build filesystem.
-   - F3 ↔ F4: CI workflow calling the exact ISO build arguments and artifact outputs expected by build-iso.sh.
-   - F3 ↔ F5: QEMU launcher validating the exact ISO output path, format, and bootloader partitions generated by xorriso.
-   - Target: >= 6 integration test cases.
-4. **Tier 4 — Real-World Application Scenarios**:
-   - Scenario 1: Clean build workflow simulation (dry-run pipeline from clean state to packaging and ISO configuration).
-   - Scenario 2: Offline repository generation and package dependency graph validation.
-   - Scenario 3: Calamares installer live session autostart and post-install script chroot execution dry-run.
-   - Scenario 4: QEMU headless VM invocation validation and command string generation.
-   - Scenario 5: User build guide verification (extracting and validating all shell snippets and prerequisite checks in docs).
-   - Target: >= 5 realistic application workloads.
+## Metodologia de Design dos Casos de Teste
+1. **Tier 1 — Cobertura de Funcionalidades (>=5 testes por funcionalidade)**:
+   - Valida existência, estrutura, validade sintática, palavras-chave obrigatórias e interfaces operacionais de F1 a F6.
+   - Meta: >= 30 casos de teste.
+2. **Tier 2 — Casos de Limite e de Canto (>=5 testes por funcionalidade)**:
+   - Arquivos de configuração ausentes, sintaxe corrompida, flags inválidas, dependências ausentes, permissões, casos de borda do dry-run.
+   - Meta: >= 30 casos de teste.
+3. **Tier 3 — Combinações Entre Funcionalidades (Cobertura Par a Par)**:
+   - F1 ↔ F2: Binários e arquivos desktop dos pacotes correspondendo ao autostart e aos hooks de pós-instalação do Calamares.
+   - F1/F2 ↔ F3: Gerador da ISO consumindo corretamente o repositório APT local e preparando o branding/módulos do Calamares no sistema de arquivos live.
+   - F3 ↔ F4: Workflow de CI chamando exatamente os argumentos de build da ISO e as saídas de artefatos esperadas pelo build-iso.sh.
+   - F3 ↔ F5: Lançador QEMU validando exatamente o caminho, o formato e as partições de bootloader da ISO gerada pelo xorriso.
+   - Meta: >= 6 casos de teste de integração.
+4. **Tier 4 — Cenários de Uso Real**:
+   - Cenário 1: Simulação do fluxo de build limpo (pipeline em dry-run do estado limpo até o empacotamento e a configuração da ISO).
+   - Cenário 2: Geração do repositório offline e validação do grafo de dependências dos pacotes.
+   - Cenário 3: Autostart da sessão live do instalador Calamares e dry-run da execução do script de pós-instalação no chroot.
+   - Cenário 4: Validação da invocação de VM QEMU headless e da geração da linha de comando.
+   - Cenário 5: Verificação do guia de build do usuário (extração e validação de todos os trechos de shell e das verificações de pré-requisitos na documentação).
+   - Meta: >= 5 cargas de trabalho realistas.
 
-## Coverage Thresholds
-- **Tier 1**: ≥ 5 tests per feature (Total ≥ 30)
-- **Tier 2**: ≥ 5 tests per feature (Total ≥ 30)
-- **Tier 3**: Pairwise coverage across all 6 core feature areas (Total ≥ 6)
-- **Tier 4**: ≥ 5 comprehensive end-user workflow scenarios (Total ≥ 5)
-- **Minimum Total Test Count**: ≥ 71 tests.
+## Limiares de Cobertura
+- **Tier 1**: ≥ 5 testes por funcionalidade (Total ≥ 30)
+- **Tier 2**: ≥ 5 testes por funcionalidade (Total ≥ 30)
+- **Tier 3**: Cobertura par a par das 6 áreas funcionais principais (Total ≥ 6)
+- **Tier 4**: ≥ 5 cenários abrangentes de fluxo do usuário final (Total ≥ 5)
+- **Total Mínimo de Testes**: ≥ 71 testes.

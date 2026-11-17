@@ -19,11 +19,11 @@ Depends: ${misc:Depends},
          libgtk4-layer-shell0
 Recommends: kitty, fonts-jetbrains-mono
 Suggests: hyprland (>= 0.53) | wayfire (>= 0.10), wl-clipboard
-Description: Lumen OS Curved Glass Desktop Shell
- A modern, developer-first desktop shell built with GTK4 and gtk4-layer-shell.
- Features real-time system metrics (/proc CPU, RAM, open ports, Docker socket),
- dynamic toggling between vertical collapsible sidebar and horizontal dock,
- and native GPU glass styling.
+Description: Shell de desktop Curved Glass do Lumen OS
+ Um shell de desktop moderno, focado em desenvolvedores, feito com GTK4 e gtk4-layer-shell.
+ Traz métricas do sistema em tempo real (/proc CPU, RAM, portas abertas, socket do Docker),
+ alternância dinâmica entre barra lateral vertical recolhível e dock horizontal,
+ e estilo de vidro nativo acelerado por GPU.
 
 Package: lumen-compositor
 Architecture: all
@@ -37,9 +37,9 @@ Depends: ${misc:Depends},
          xdg-desktop-portal-hyprland | xdg-desktop-portal-wlr,
          xdg-desktop-portal
 Recommends: wayfire, waybar, wl-clipboard
-Description: Lumen OS Wayland Compositor Session
- Hyprland configuration and Wayfire fallback integration featuring
- GPU blur shaders and curved glass theme integration.
+Description: Sessão do compositor Wayland do Lumen OS
+ Configuração do Hyprland e integração de fallback com o Wayfire, com
+ shaders de blur na GPU e integração com o tema curved glass.
 
 Package: lumen-system
 Architecture: all
@@ -51,10 +51,10 @@ Depends: ${misc:Depends},
          systemd-zram-generator
 Recommends: apt
 Suggests: snapd
-Description: Lumen OS System Performance Tuning & Optimization
- Tunes Ubuntu 26.04 kernel parameters for development workloads:
- inotify file watchers, swappiness 10, vfs_cache_pressure, network buffers,
- automated zram swap generation, and optional APT pinning for snap blocking.
+Description: Ajuste e otimização de desempenho do sistema Lumen OS
+ Ajusta os parâmetros de kernel do Ubuntu 26.04 para cargas de desenvolvimento:
+ watchers de arquivos inotify, swappiness 10, vfs_cache_pressure, buffers de rede,
+ geração automática de swap zram e pinning APT opcional para bloquear o snap.
 
 Package: lumen-dev-stack
 Architecture: all
@@ -77,9 +77,9 @@ Depends: ${misc:Depends},
          unzip,
          fonts-jetbrains-mono
 Recommends: kitty
-Description: Lumen OS Developer Environment Stack
- Curated developer dotfiles, shell environment integrations,
- CLI productivity tools, and automated runtime orchestration.
+Description: Stack de ambiente de desenvolvimento do Lumen OS
+ Dotfiles selecionados para desenvolvedores, integrações de ambiente de shell,
+ ferramentas CLI de produtividade e orquestração automatizada de runtimes.
 
 Package: lumen-welcome
 Architecture: all
@@ -95,11 +95,11 @@ Depends: ${misc:Depends},
          polkitd
 Recommends: lumen-system (= 1.0.0-1ubuntu1) | distro-system,
             lumen-dev-stack (= 1.0.0-1ubuntu1) | distro-dev-stack
-Description: Lumen OS First-Boot Onboarding Wizard
- Interactive onboarding wizard for initial system setup. Allows developers
- to select shell orientation (sidebar vs dock), primary code editor (Neovim,
- VS Code, Zed, Cursor), programming runtimes via mise, and apply developer
- kernel tunings.
+Description: Assistente de boas-vindas do 1º boot do Lumen OS
+ Assistente interativo para a configuração inicial do sistema. Permite escolher
+ a orientação do shell (barra lateral ou dock), o editor principal (Neovim,
+ VS Code, Zed, Cursor), runtimes de programação via mise e aplicar ajustes
+ de kernel para desenvolvimento.
 
 Package: lumen-desktop
 Architecture: all
@@ -113,7 +113,7 @@ Depends: ${misc:Depends},
          lumen-dev-stack (= 1.0.0-1ubuntu1) | distro-dev-stack,
          lumen-welcome (= 1.0.0-1ubuntu1) | distro-welcome
 Recommends: greetd | sddm | gdm3
-Description: Lumen OS Complete Desktop Environment Metapackage
- Complete metapackage pulling together all components of Lumen OS:
- Curved Glass Shell, Hyprland/Wayfire compositor configuration, dev-first
- system optimizations, base development stack, and welcome wizard.
+Description: Metapacote do ambiente de desktop completo do Lumen OS
+ Metapacote completo que reúne todos os componentes do Lumen OS:
+ Curved Glass Shell, configuração do compositor Hyprland/Wayfire, otimizações
+ de sistema dev-first, stack base de desenvolvimento e assistente de boas-vindas.

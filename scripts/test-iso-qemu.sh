@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Linux VDK - Runner de Teste e Validacao de ISO em QEMU/KVM (UEFI + BIOS)
+# Linux VDK - Runner de Teste e Validação de ISO em QEMU/KVM (UEFI + BIOS)
 # ==============================================================================
 set -euo pipefail
 
@@ -20,15 +20,15 @@ usage() {
 Linux VDK — Teste da ISO em Máquina Virtual QEMU
 
 Uso:
-  $0 [opcoes]
+  $0 [opções]
 
-Opcoes:
-  --iso PATH        Caminho da ISO (padrao: dist/linux-vdk-26.04-amd64.iso)
-  --uefi            Inicializa em modo UEFI usando firmware OVMF (padrao)
+Opções:
+  --iso PATH        Caminho da ISO (padrão: dist/linux-vdk-26.04-amd64.iso)
+  --uefi            Inicializa em modo UEFI usando firmware OVMF (padrão)
   --bios            Inicializa em modo Legacy BIOS
-  --headless        Executa sem janela grafica (-nographic / serial)
-  --ram MB          Memoria RAM da VM em MB (padrao: 2048)
-  --smp CORES       Numero de vCPUs (padrao: 2)
+  --headless        Executa sem janela gráfica (-nographic / serial)
+  --ram MB          Memória RAM da VM em MB (padrão: 2048)
+  --smp CORES       Número de vCPUs (padrão: 2)
   --dry-run         Valida argumentos/OVMF/KVM e imprime o comando QEMU
   -h, --help        Mostra esta ajuda e sai
 EOF
@@ -69,7 +69,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     -*)
-      echo "[erro] Opcao desconhecida: $1" >&2
+      echo "[erro] Opção desconhecida: $1" >&2
       usage >&2
       exit 2
       ;;
@@ -113,16 +113,16 @@ find_ovmf() {
 }
 
 if [[ "$DRY_RUN" != true && ! -f "$ISO_PATH" ]]; then
-  echo "[erro] ISO not found: $ISO_PATH" >&2
+  echo "[erro] ISO não encontrada: $ISO_PATH" >&2
   echo "Gere a ISO primeiro com: sudo ./scripts/build-iso.sh" >&2
   exit 1
 fi
 
 if ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
   if [[ "$DRY_RUN" == true ]]; then
-    echo "[dry-run] qemu-system-x86_64 nao encontrado (instale pacote qemu-system-x86)."
+    echo "[dry-run] qemu-system-x86_64 não encontrado (instale pacote qemu-system-x86)."
   else
-    echo "[erro] qemu-system-x86_64 nao instalado. Rode: sudo apt-get install -y qemu-system-x86 ovmf" >&2
+    echo "[erro] qemu-system-x86_64 não instalado. Rode: sudo apt-get install -y qemu-system-x86 ovmf" >&2
     exit 1
   fi
 fi
@@ -135,11 +135,11 @@ QEMU_ARGS=(
   -net nic -net user
 )
 
-# Detecta aceleracao KVM com fallback seguro para TCG em software
+# Detecta aceleração KVM com fallback seguro para TCG em software
 if [[ -e /dev/kvm && -r /dev/kvm && -w /dev/kvm ]]; then
   QEMU_ARGS+=(-enable-kvm -cpu host)
 else
-  echo "[qemu] /dev/kvm indisponivel; usando emulacao tcg em software."
+  echo "[qemu] /dev/kvm indisponível; usando emulação tcg em software."
   QEMU_ARGS+=(-accel tcg -cpu qemu64)
 fi
 
@@ -150,7 +150,7 @@ if [[ "$BOOT_MODE" == "uefi" ]]; then
   elif [[ "$DRY_RUN" == true ]]; then
     QEMU_ARGS+=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd")
   else
-    echo "[erro] Firmware OVMF UEFI nao encontrado. Instale com: sudo apt-get install -y ovmf" >&2
+    echo "[erro] Firmware OVMF UEFI não encontrado. Instale com: sudo apt-get install -y ovmf" >&2
     exit 1
   fi
 fi

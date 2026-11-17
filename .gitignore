@@ -1,4 +1,4 @@
-# Build artifacts & generated binaries
+# Artefatos de build e binários gerados
 build/
 dist/
 *.deb
@@ -11,7 +11,7 @@ __pycache__/
 *.egg-info/
 .venv/
 
-# Test runtime reports & logs
+# Relatórios e logs de execução dos testes
 tests/e2e/reports/*.xml
 *.log
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Instalando dependencias da Fase 1 no Ubuntu 26.04 LTS..."
+echo "Instalando dependências da Fase 1 no Ubuntu 26.04 LTS..."
 sudo apt-get update
 sudo apt-get install -y \
   python3-gi \
@@ -11,6 +11,6 @@ sudo apt-get install -y \
   hyprland \
   kitty
 
-echo "Dependencias instaladas! Agora voce pode rodar:"
+echo "Dependências instaladas! Agora você pode rodar:"
 echo "  ./scripts/run-preview.sh          # Preview GTK4 em janela"
 echo "  ./scripts/run-nested-hyprland.sh  # Hyprland + Curved Shell em janela Wayland"

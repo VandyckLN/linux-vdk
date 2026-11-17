@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Lumen OS Welcome
-GenericName=First-Boot Setup
+GenericName=Configuração do 1º Boot
 Comment=Configure your Lumen OS desktop experience and developer tools
 Exec=/usr/bin/lumen-welcome
 TryExec=/usr/bin/lumen-welcome

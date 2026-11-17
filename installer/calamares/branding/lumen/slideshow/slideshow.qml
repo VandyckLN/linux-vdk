@@ -91,7 +91,7 @@ Presentation {
     }
 
     // -------------------------------------------------------------
-    // Slide 2: Hyprland 0.53 Compositor
+    // Slide 2: Compositor Hyprland 0.53
     // -------------------------------------------------------------
     Slide {
         Rectangle {
@@ -159,7 +159,7 @@ Presentation {
     }
 
     // -------------------------------------------------------------
-    // Slide 3: Dev-First Stack
+    // Slide 3: Stack Dev-First
     // -------------------------------------------------------------
     Slide {
         Rectangle {
@@ -228,7 +228,7 @@ Presentation {
     }
 
     // -------------------------------------------------------------
-    // Slide 4: System Tuning & Performance
+    // Slide 4: Ajuste de Sistema e Desempenho
     // -------------------------------------------------------------
     Slide {
         Rectangle {

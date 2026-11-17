@@ -1,4 +1,4 @@
-"""UI widgets for the Curved Glass Shell."""
+"""Widgets de UI do Curved Glass Shell."""
 
 from .nav_menu import NavMenu, NavSection
 from .notice_card import NoticeCard

@@ -3,12 +3,12 @@ set -e
 
 case "$1" in
     configure)
-        # Apply kernel sysctl parameters safely
+        # Aplica os parâmetros sysctl do kernel com segurança
         if command -v sysctl >/dev/null 2>&1; then
             sysctl --system >/dev/null 2>&1 || true
         fi
 
-        # Safely notify systemd only if systemd is booted (PID 1)
+        # Notifica o systemd com segurança somente se ele estiver em execução (PID 1)
         if [ -d /run/systemd/system ]; then
             systemctl daemon-reload >/dev/null 2>&1 || true
             systemctl restart systemd-zram-setup@zram0.service >/dev/null 2>&1 || true
@@ -19,7 +19,7 @@ case "$1" in
     ;;
 
     *)
-        echo "postinst called with unknown argument \`$1'" >&2
+        echo "postinst chamado com argumento desconhecido \`$1'" >&2
         exit 1
     ;;
 esac

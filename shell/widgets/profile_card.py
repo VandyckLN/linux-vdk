@@ -1,4 +1,4 @@
-"""Header and developer profile widget for the Curved Glass Shell."""
+"""Widget de cabeçalho e perfil do desenvolvedor do Curved Glass Shell."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from gi.repository import Gtk, Pango  # noqa: E402
 
 
 class ProfileCard(Gtk.Box):
-    """Displays distro brand, expand/collapse trigger, and user profile."""
+    """Exibe a marca da distro, o gatilho de expandir/recolher e o perfil do usuário."""
 
     def __init__(
         self,
@@ -25,7 +25,7 @@ class ProfileCard(Gtk.Box):
         self._on_toggle_expand = on_toggle_expand
         self._on_toggle_orientation = on_toggle_orientation
 
-        # Top header bar (only visible when expanded in vertical mode)
+        # Barra de cabeçalho superior (visível apenas quando expandida no modo vertical)
         self.header_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         brand = Gtk.Label(label=distro_name.upper(), xalign=0.0)
         brand.add_css_class("brand-title")
@@ -45,14 +45,14 @@ class ProfileCard(Gtk.Box):
         self.header_row.append(self.orientation_btn)
         self.header_row.append(self.collapse_btn)
 
-        # Compact expand trigger (visible when collapsed in vertical mode)
+        # Gatilho compacto de expansão (visível quando recolhida no modo vertical)
         self.expand_btn = Gtk.Button(label="⇥")
         self.expand_btn.set_tooltip_text("Expandir painel")
         self.expand_btn.add_css_class("icon-btn")
         self.expand_btn.set_halign(Gtk.Align.CENTER)
         self.expand_btn.connect("clicked", lambda *_: self._on_toggle_expand())
 
-        # User profile row
+        # Linha do perfil do usuário
         self.profile_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.profile_row.set_valign(Gtk.Align.CENTER)
 
@@ -89,7 +89,7 @@ class ProfileCard(Gtk.Box):
         self.append(self.profile_row)
 
     def set_mode(self, orientation: str, expanded: bool) -> None:
-        """Adjusts visibility for vertical/horizontal and collapsed/expanded states."""
+        """Ajusta a visibilidade para os estados vertical/horizontal e recolhido/expandido."""
         is_vertical = orientation == "vertical"
         self.set_orientation(
             Gtk.Orientation.VERTICAL if is_vertical else Gtk.Orientation.HORIZONTAL

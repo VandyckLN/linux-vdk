@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_PATH="/usr/share/lumen-os/dev-stack/setup-dev-env.sh"
 if [[ ! -f "$SCRIPT_PATH" ]]; then
-    echo "Error: Dev setup script not found at $SCRIPT_PATH" >&2
+    echo "Erro: script de setup dev não encontrado em $SCRIPT_PATH" >&2
     exit 1
 fi
 exec bash "$SCRIPT_PATH" "$@"

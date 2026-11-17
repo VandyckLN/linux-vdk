@@ -1,4 +1,4 @@
-"""GTK4 Curved Glass First-Boot & Dev Setup Wizard."""
+"""Assistente GTK4 Curved Glass de 1º Boot e Setup Dev."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ EXTRA_CSS = b"""
 
 
 class WelcomeWindow(Gtk.ApplicationWindow):
-    """Configures bar orientation, editor, runtimes, and Ubuntu dev tuning."""
+    """Configura a orientação da barra, o editor, os runtimes e o ajuste dev do Ubuntu."""
 
     def __init__(self, app: Gtk.Application, config: ConfigStore, dry_run: bool = False) -> None:
         super().__init__(application=app, title="Linux VDK • Bem-vindo (1º Boot)")
@@ -218,7 +218,7 @@ class WelcomeWindow(Gtk.ApplicationWindow):
             sys_box.append(chk)
         card.append(sys_box)
 
-        # Log output
+        # Saída de log
         self.log_buffer = Gtk.TextBuffer()
         self.log_view = Gtk.TextView(buffer=self.log_buffer)
         self.log_view.set_editable(False)

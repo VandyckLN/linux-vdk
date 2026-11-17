@@ -1,1 +1,1 @@
-"""First-boot onboarding and developer stack wizard for Lumen OS."""
+"""Assistente de boas-vindas do 1º boot e da stack de desenvolvimento do Lumen OS."""

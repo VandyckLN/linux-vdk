@@ -1,5 +1,5 @@
-/* Curved Glass Shell - GTK4 Stylesheet
- * Emulates frosted curved glass with specular borders and crisp dark-mode legibility.
+/* Curved Glass Shell - Folha de Estilo GTK4
+ * Emula vidro curvo fosco com bordas especulares e legibilidade nítida no modo escuro.
  */
 
 window.curved-shell-window {
@@ -10,7 +10,7 @@ window.curved-shell-preview {
     background-image: linear-gradient(135deg, #1b1e26 0%, #2b2f3a 42%, #13161c 100%);
 }
 
-/* Main floating curved glass container */
+/* Contêiner principal flutuante de vidro curvo */
 .glass-shell {
     background-color: rgba(24, 27, 34, 0.56);
     background-image: linear-gradient(
@@ -57,7 +57,7 @@ window.curved-shell-preview {
     padding: 14px;
 }
 
-/* Header & Brand */
+/* Cabeçalho e Marca */
 .brand-title {
     font-size: 13px;
     font-weight: 700;
@@ -81,7 +81,7 @@ window.curved-shell-preview {
     border-color: rgba(255, 255, 255, 0.36);
 }
 
-/* Profile card */
+/* Card de perfil */
 .profile-avatar {
     background-image: linear-gradient(135deg, #748dff 0%, #a970ff 100%);
     border: 1.5px solid rgba(255, 255, 255, 0.65);
@@ -123,7 +123,7 @@ window.curved-shell-preview {
     margin-bottom: 2px;
 }
 
-/* Navigation items */
+/* Itens de navegação */
 .nav-item {
     background-color: transparent;
     border: 1px solid transparent;
@@ -175,7 +175,7 @@ window.curved-shell-preview {
     font-weight: 600;
 }
 
-/* Notice / System Card (bottom glass card like the video) */
+/* Card de Aviso / Sistema (card de vidro inferior, como no vídeo) */
 .notice-card {
     background-color: rgba(255, 255, 255, 0.10);
     background-image: linear-gradient(

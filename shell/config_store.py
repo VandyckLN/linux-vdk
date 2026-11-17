@@ -1,4 +1,4 @@
-"""Persistent configuration store for the Curved Glass Shell."""
+"""Armazenamento persistente de configuração do Curved Glass Shell."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 
 
 class ConfigStore:
-    """Loads, validates, and saves user shell configuration."""
+    """Carrega, valida e salva a configuração do shell do usuário."""
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or USER_CONFIG_PATH
@@ -61,7 +61,7 @@ class ConfigStore:
     @orientation.setter
     def orientation(self, value: str) -> None:
         if value not in ("vertical", "horizontal"):
-            raise ValueError(f"Unsupported orientation: {value}")
+            raise ValueError(f"Orientação não suportada: {value}")
         self.data.setdefault("bar", {})["orientation"] = value
         self.save()
 

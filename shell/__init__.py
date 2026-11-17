@@ -1,1 +1,1 @@
-"""Curved Glass Shell package for the Ubuntu Dev Distro."""
+"""Pacote do Curved Glass Shell para a Ubuntu Dev Distro."""

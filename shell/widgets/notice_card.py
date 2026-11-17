@@ -1,4 +1,4 @@
-"""Bottom Notice / Live System Telemetry card modeled after the Curved Sidebar UI."""
+"""Card inferior de Aviso / Telemetria do Sistema ao vivo, inspirado na UI da Curved Sidebar."""
 
 from __future__ import annotations
 
@@ -11,36 +11,36 @@ from ..system_metrics import SystemSnapshot  # noqa: E402
 
 
 class NoticeCard(Gtk.Box):
-    """Displays CPU, RAM, Docker, and local ports in compact or expanded glass form."""
+    """Exibe CPU, RAM, Docker e portas locais em formato de vidro compacto ou expandido."""
 
     def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
 
-        # Compact gem/badge shown when sidebar is collapsed
+        # Gema/badge compacto exibido quando a barra lateral está recolhida
         self.compact_badge = Gtk.Label(label="◆\nDEV")
         self.compact_badge.set_justify(Gtk.Justification.CENTER)
         self.compact_badge.add_css_class("notice-compact-badge")
         self.compact_badge.set_halign(Gtk.Align.CENTER)
 
-        # Expanded notice card
+        # Card de aviso expandido
         self.card_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.card_box.add_css_class("notice-card")
 
         top_line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.badge_lbl = Gtk.Label(label="SYSTEM • LIVE", xalign=0.0)
+        self.badge_lbl = Gtk.Label(label="SISTEMA • AO VIVO", xalign=0.0)
         self.badge_lbl.add_css_class("notice-badge")
         self.badge_lbl.set_hexpand(True)
         gem = Gtk.Label(label="◆")
         top_line.append(self.badge_lbl)
         top_line.append(gem)
 
-        self.title_lbl = Gtk.Label(label="NOTICE", xalign=0.0)
+        self.title_lbl = Gtk.Label(label="AVISO", xalign=0.0)
         self.title_lbl.add_css_class("notice-title")
 
         self.metrics_lbl = Gtk.Label(label="CPU 0%  •  RAM 0.0 GB", xalign=0.0)
         self.metrics_lbl.add_css_class("notice-detail")
 
-        self.dev_lbl = Gtk.Label(label="Docker off  •  Ports: none", xalign=0.0)
+        self.dev_lbl = Gtk.Label(label="Docker parado  •  Portas: nenhuma", xalign=0.0)
         self.dev_lbl.add_css_class("notice-detail")
 
         self.card_box.append(top_line)
@@ -48,7 +48,7 @@ class NoticeCard(Gtk.Box):
         self.card_box.append(self.metrics_lbl)
         self.card_box.append(self.dev_lbl)
 
-        # Horizontal chip shown in horizontal dock mode
+        # Chip horizontal exibido no modo dock horizontal
         self.horizontal_chip = Gtk.Label(label="◆ CPU 0% | RAM 0%")
         self.horizontal_chip.add_css_class("notice-detail")
 
@@ -57,13 +57,13 @@ class NoticeCard(Gtk.Box):
         self.append(self.horizontal_chip)
 
     def update_snapshot(self, snap: SystemSnapshot) -> None:
-        docker_txt = f"Docker {snap.docker_running} up" if snap.docker_available else "Docker idle"
-        ports_txt = " ".join(snap.listening_ports) if snap.listening_ports else "no dev ports"
+        docker_txt = f"Docker: {snap.docker_running} ativo(s)" if snap.docker_available else "Docker ocioso"
+        ports_txt = " ".join(snap.listening_ports) if snap.listening_ports else "sem portas dev"
         self.compact_badge.set_text(f"◆\n{snap.ram_percent}%")
         self.compact_badge.set_tooltip_text(
             f"CPU {snap.cpu_percent}% • RAM {snap.ram_used_gb:.1f}/{snap.ram_total_gb:.1f} GB"
         )
-        self.title_lbl.set_text(f"DEV STATUS • {snap.hostname}")
+        self.title_lbl.set_text(f"STATUS DEV • {snap.hostname}")
         self.metrics_lbl.set_text(
             f"CPU {snap.cpu_percent}%  •  RAM {snap.ram_used_gb:.1f}/{snap.ram_total_gb:.1f} GB ({snap.ram_percent}%)"
         )

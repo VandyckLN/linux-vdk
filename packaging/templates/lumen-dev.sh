@@ -13,12 +13,12 @@ if [ -d "$HOME/.cargo/bin" ]; then
     esac
 fi
 
-# Activate mise if installed
+# Ativa o mise, se instalado
 if command -v mise >/dev/null 2>&1; then
     eval "$(mise activate bash)"
 fi
 
-# Activate starship if installed
+# Ativa o starship, se instalado
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init bash)"
 fi

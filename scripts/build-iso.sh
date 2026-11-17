@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Linux VDK (Ubuntu 26.04 LTS Minimal) - Pipeline Reproduzivel de Geracao de ISO
+# Linux VDK (Ubuntu 26.04 LTS Minimal) - Pipeline Reproduzível de Geração de ISO
 # Abordagem: debootstrap (minbase) + squashfs (zstd) + xorriso (UEFI + BIOS)
 # ==============================================================================
 set -euo pipefail
@@ -24,13 +24,13 @@ usage() {
 Linux VDK — Gerador de ISO Instalavel (Ubuntu 26.04 LTS Minimal)
 
 Uso:
-  sudo $0 [opcoes]
+  sudo $0 [opções]
 
-Opcoes:
-  --work-dir DIR    Diretorio temporario de chroot/staging (padrao: build/iso-work)
-  --output PATH     Caminho da ISO final (padrao: dist/$ISO_NAME)
-  --clean           Remove o diretorio de trabalho antes de iniciar
-  --dry-run         Valida pre-requisitos e exibe plano sem executar rootfs/ISO
+Opções:
+  --work-dir DIR    Diretório temporário de chroot/staging (padrão: build/iso-work)
+  --output PATH     Caminho da ISO final (padrão: dist/$ISO_NAME)
+  --clean           Remove o diretório de trabalho antes de iniciar
+  --dry-run         Valida pré-requisitos e exibe plano sem executar rootfs/ISO
   -h, --help        Exibe esta ajuda e sai
 
 Exemplos:
@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "[erro] Opcao desconhecida: $1" >&2
+      echo "[erro] Opção desconhecida: $1" >&2
       usage >&2
       exit 1
       ;;
@@ -114,7 +114,7 @@ if [[ "$DRY_RUN" == true ]]; then
   log "Plano de build:"
   log "  1. Empacotar .debs em $DEBS_DIR (scripts/package-debs.sh)"
   log "  2. Bootstrap Ubuntu $UBUNTU_SUITE ($ARCH, minbase) em $CHROOT_DIR"
-  log "  3. Instalar kernel, casper, calamares, lumen-desktop e configurar usuario live '$LIVE_USER'"
+  log "  3. Instalar kernel, casper, calamares, lumen-desktop e configurar usuário live '$LIVE_USER'"
   log "  4. Gerar filesystem.manifest e compactar filesystem.squashfs (zstd)"
   log "  5. Montar boot dual UEFI + BIOS (xorriso -as mkisofs) -> $ISO_PATH + .sha256"
   exit 0
@@ -128,7 +128,7 @@ fi
 check_prerequisites
 
 if [[ "$CLEAN_WORK" == true && -d "$WORK_DIR" ]]; then
-  log "Limpando diretorio de trabalho $WORK_DIR..."
+  log "Limpando diretório de trabalho $WORK_DIR..."
   cleanup_mounts
   rm -rf "$WORK_DIR"
 fi
@@ -146,7 +146,7 @@ if [[ ! -f "$CHROOT_DIR/etc/os-release" ]]; then
   log "Executando debootstrap ($UBUNTU_SUITE / $ARCH / variant=minbase)..."
   debootstrap --arch="$ARCH" --variant=minbase "$UBUNTU_SUITE" "$CHROOT_DIR" "$UBUNTU_MIRROR"
 else
-  log "Chroot ja existente em $CHROOT_DIR (reaproveitando; use --clean para recriar)."
+  log "Chroot já existente em $CHROOT_DIR (reaproveitando; use --clean para recriar)."
 fi
 
 # 3. Configurar APT, mounts e instalar base + Linux VDK + Calamares
@@ -175,13 +175,13 @@ apt-get install -y --no-install-recommends \
   grub-pc-bin grub-efi-amd64-bin shim-signed \
   calamares qml6-module-qtquick-controls
 
-# Instala repositorio local de pacotes .deb do Linux VDK
+# Instala repositório local de pacotes .deb do Linux VDK
 echo 'deb [trusted=yes] file:/mnt/debs ./' > /etc/apt/sources.list.d/linux-vdk-local.list
 apt-get update
 apt-get install -y lumen-desktop
 rm -f /etc/apt/sources.list.d/linux-vdk-local.list
 
-# Copia configuracao do Calamares com branding Linux VDK
+# Copia configuração do Calamares com branding Linux VDK
 mkdir -p /etc/calamares
 "
 
@@ -196,7 +196,7 @@ install -Dm644 "$ROOT_DIR/installer/calamares/install-lumen.desktop" \
   "$CHROOT_DIR/etc/xdg/autostart/install-lumen.desktop"
 
 chroot "$CHROOT_DIR" /bin/bash -euo pipefail -c "
-# Configura usuario live ($LIVE_USER) sem senha para sessao live
+# Configura usuário live ($LIVE_USER) sem senha para sessão live
 if ! id -u $LIVE_USER >/dev/null 2>&1; then
   useradd -m -s /bin/bash -G sudo,video,audio,render $LIVE_USER
   passwd -d $LIVE_USER
@@ -227,7 +227,7 @@ mksquashfs "$CHROOT_DIR" "$STAGING_DIR/casper/filesystem.squashfs" \
 
 printf "%s\n" "$(du -sx --block-size=1 "$CHROOT_DIR" | cut -f1)" > "$STAGING_DIR/casper/filesystem.size"
 
-# 5. Bootloader Dual (UEFI + Legacy BIOS) sem depender de loop devices (compativel com WSL2)
+# 5. Bootloader Dual (UEFI + Legacy BIOS) sem depender de loop devices (compatível com WSL2)
 log "Configurando boot dual UEFI e Legacy BIOS..."
 cat > "$STAGING_DIR/boot/grub/grub.cfg" <<EOF
 set default="0"
@@ -270,8 +270,8 @@ grub-mkstandalone \
 
 cat /usr/lib/grub/i386-pc/cdboot.img "$WORK_DIR/core.img" > "$STAGING_DIR/boot/grub/bios.img"
 
-# 6. Gerar ISO hibrida com xorriso
-log "Gerando imagem ISO hibrida em $ISO_PATH..."
+# 6. Gerar ISO híbrida com xorriso
+log "Gerando imagem ISO híbrida em $ISO_PATH..."
 xorriso -as mkisofs \
   -iso-level 3 \
   -full-iso9660-filenames \

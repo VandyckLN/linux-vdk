@@ -1,10 +1,10 @@
 /* ==========================================================================
-   Lumen OS — Curved Glass Calamares Qt 6 Stylesheet
-   Frosted dark glass, specular borders, pill buttons & periwinkle gradients.
-   Target: Ubuntu 26.04 LTS (Resolute Raccoon) • Qt 6.x / KF6 Calamares
+   Lumen OS — Folha de Estilo Qt 6 Curved Glass do Calamares
+   Vidro escuro fosco, bordas especulares, botões em pílula e gradientes periwinkle.
+   Alvo: Ubuntu 26.04 LTS (Resolute Raccoon) • Qt 6.x / KF6 Calamares
    ========================================================================== */
 
-/* --- Global Base --- */
+/* --- Base Global --- */
 QWidget {
     font-family: "Inter", "Ubuntu", -apple-system, sans-serif;
     font-size: 13px;
@@ -13,7 +13,7 @@ QWidget {
     selection-color: #ffffff;
 }
 
-/* Main Application Window Background */
+/* Fundo da Janela Principal */
 QWidget#mainApp, QDialog#mainApp, QWidget#contentWidget, QWidget#viewManagerWidget {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 #0d0f14,
@@ -22,7 +22,7 @@ QWidget#mainApp, QDialog#mainApp, QWidget#contentWidget, QWidget#viewManagerWidg
     color: #f3f5f8;
 }
 
-/* --- Left Sidebar (Navigation Panel) --- */
+/* --- Barra Lateral Esquerda (Painel de Navegação) --- */
 #sidebarApp {
     background-color: rgba(20, 24, 32, 0.92);
     border-right: 1.5px solid rgba(255, 255, 255, 0.16);
@@ -35,7 +35,7 @@ QWidget#mainApp, QDialog#mainApp, QWidget#contentWidget, QWidget#viewManagerWidg
     padding: 10px 6px;
 }
 
-/* Sidebar Step Items */
+/* Itens de Etapa da Barra Lateral */
 QListView, QTreeView {
     background-color: transparent;
     border: none;
@@ -66,7 +66,7 @@ QListView::item:selected, QTreeView::item:selected {
     font-weight: 700;
 }
 
-/* --- Content Cards & Group Boxes (Frosted Glass Containers) --- */
+/* --- Cards de Conteúdo e Group Boxes (Contêineres de Vidro Fosco) --- */
 QGroupBox {
     background-color: rgba(24, 27, 34, 0.68);
     border: 1.5px solid rgba(255, 255, 255, 0.22);
@@ -94,7 +94,7 @@ QFrame#panel, QFrame#boxWidget, QFrame[frameShape="1"] {
     border-radius: 16px;
 }
 
-/* --- Buttons (Glass Pills & Vibrant Primary CTAs) --- */
+/* --- Botões (Pílulas de Vidro e CTAs Primários Vibrantes) --- */
 QPushButton {
     background-color: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.24);
@@ -122,7 +122,7 @@ QPushButton:disabled {
     color: rgba(255, 255, 255, 0.28);
 }
 
-/* Primary Action CTA (Next / Install / Confirm) */
+/* CTA de Ação Primária (Avançar / Instalar / Confirmar) */
 QPushButton:default, QPushButton#nextButton, QPushButton#actionButton {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 #748dff,
@@ -147,7 +147,7 @@ QPushButton:default:pressed, QPushButton#nextButton:pressed, QPushButton#actionB
         stop:1.0 #955be6);
 }
 
-/* --- Input Fields & Combo Boxes --- */
+/* --- Campos de Entrada e Combo Boxes --- */
 QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox {
     background-color: rgba(14, 17, 24, 0.78);
     border: 1px solid rgba(255, 255, 255, 0.22);
@@ -193,7 +193,7 @@ QComboBox QAbstractItemView {
     padding: 4px;
 }
 
-/* --- Progress Bar --- */
+/* --- Barra de Progresso --- */
 QProgressBar {
     background-color: rgba(12, 14, 20, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.22);
@@ -214,7 +214,7 @@ QProgressBar::chunk {
     border-radius: 9px;
 }
 
-/* --- Checkboxes & Radio Buttons --- */
+/* --- Checkboxes e Botões de Opção --- */
 QCheckBox, QRadioButton {
     color: #e2e8f0;
     spacing: 8px;
@@ -242,7 +242,7 @@ QCheckBox::indicator:checked, QRadioButton::indicator:checked {
     border-color: #a970ff;
 }
 
-/* --- Tooltips & Scrollbars --- */
+/* --- Tooltips e Barras de Rolagem --- */
 QToolTip {
     background-color: #1a1e28;
     border: 1px solid rgba(255, 255, 255, 0.30);

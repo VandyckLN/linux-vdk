@@ -1,4 +1,4 @@
-"""Main Curved Glass Shell window with Wayland Layer-Shell and Preview support."""
+"""Janela principal do Curved Glass Shell com suporte a Wayland Layer-Shell e modo Preview."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Ensure libgtk4-layer-shell is preloaded globally before libwayland-client when available.
+# Garante que a libgtk4-layer-shell seja pré-carregada globalmente antes da libwayland-client, quando disponível.
 for _lib_name in ("libgtk4-layer-shell.so.0", "libgtk4-layer-shell.so"):
     try:
         ctypes.CDLL(_lib_name, mode=ctypes.RTLD_GLOBAL)
@@ -79,7 +79,7 @@ def _build_dev_sections(cfg: dict[str, Any]) -> list[NavSection]:
 
 
 class CurvedSidebarWindow(Gtk.ApplicationWindow):
-    """Floating glassmorphic shell bar supporting vertical sidebar and horizontal dock modes."""
+    """Barra de shell flutuante em glassmorphism com modos de barra lateral vertical e dock horizontal."""
 
     def __init__(self, app: Gtk.Application, config: ConfigStore, preview: bool = False) -> None:
         super().__init__(application=app, title="Lumen Curved Shell")
@@ -120,7 +120,7 @@ class CurvedSidebarWindow(Gtk.ApplicationWindow):
             )
 
     def _build_ui(self) -> None:
-        # Outer stage lets preview mode center/anchor the floating bar over a dark canvas
+        # O palco externo permite que o modo preview centralize/ancore a barra flutuante sobre um fundo escuro
         self.stage = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.stage.set_hexpand(True)
         self.stage.set_vexpand(True)
@@ -149,7 +149,7 @@ class CurvedSidebarWindow(Gtk.ApplicationWindow):
         self.divider = Gtk.Box()
         self.divider.add_css_class("glass-divider")
 
-        # Footer controls: Orientation switch (visible in horizontal/compact) + Settings + Power
+        # Controles do rodapé: alternador de orientação (visível no modo horizontal/compacto) + Configurações + Energia
         self.footer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
         self.orient_pill = Gtk.Button(label="↔ Lateral / Horizontal")
@@ -222,7 +222,7 @@ class CurvedSidebarWindow(Gtk.ApplicationWindow):
             Gtk.Orientation.VERTICAL if is_vertical else Gtk.Orientation.HORIZONTAL
         )
 
-        # Toggle CSS mode classes
+        # Alterna as classes CSS de modo
         for cls in ("compact", "horizontal"):
             self.shell_box.remove_css_class(cls)
 

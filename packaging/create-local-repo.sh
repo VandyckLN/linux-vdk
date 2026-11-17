@@ -2,10 +2,10 @@
 # ==============================================================================
 # Lumen OS — Local Offline APT Repository Generator
 # ==============================================================================
-# Generates Packages and Packages.gz index files for an offline APT repository
-# using dpkg-scanpackages with an automatic Python 3 fallback if dpkg-dev
-# is not installed. Also generates a Release file for warning-free APT usage.
-# Supports --verify mode to validate an existing repository pool.
+# Gera os arquivos de índice Packages e Packages.gz de um repositório APT offline
+# usando dpkg-scanpackages, com fallback automático em Python 3 se o dpkg-dev
+# não estiver instalado. Também gera um arquivo Release para uso do APT sem avisos.
+# Suporta o modo --verify para validar um pool de repositório existente.
 # ==============================================================================
 set -euo pipefail
 
@@ -18,17 +18,17 @@ VERIFY_ONLY=false
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [OPTIONS] [REPO_DIR]
+Uso: $(basename "$0") [OPÇÕES] [REPO_DIR]
 
-Generate Debian APT repository indexes (Packages, Packages.gz, Release)
-for offline package installation.
+Gera os índices de repositório APT Debian (Packages, Packages.gz, Release)
+para instalação offline de pacotes.
 
-Arguments:
-  REPO_DIR             Directory containing .deb packages (default: dist/debs)
+Argumentos:
+  REPO_DIR             Diretório com os pacotes .deb (padrão: dist/debs)
 
-Options:
-  --verify             Verify repository index validity without regenerating
-  -h, --help           Show this help message and exit
+Opções:
+  --verify             Verifica a validade do índice do repositório sem regenerá-lo
+  -h, --help           Mostra esta ajuda e sai
 
 EOF
 }
@@ -53,48 +53,48 @@ done
 REPO_DIR="$(mkdir -p "$REPO_DIR" && cd "$REPO_DIR" && pwd)"
 
 echo "=== Lumen OS Local APT Repository Generator ==="
-echo "Target repository directory: $REPO_DIR"
+echo "Diretório do repositório de destino: $REPO_DIR"
 
 verify_repo() {
     local target="$1"
-    echo "Verifying APT repository at: $target..."
+    echo "Verificando o repositório APT em: $target..."
     if [[ ! -f "$target/Packages" ]]; then
-        echo "ERROR: $target/Packages does not exist!" >&2
+        echo "ERRO: $target/Packages não existe!" >&2
         return 1
     fi
     if [[ ! -f "$target/Packages.gz" ]]; then
-        echo "ERROR: $target/Packages.gz does not exist!" >&2
+        echo "ERRO: $target/Packages.gz não existe!" >&2
         return 1
     fi
     if [[ ! -f "$target/Release" ]]; then
-        echo "ERROR: $target/Release does not exist!" >&2
+        echo "ERRO: $target/Release não existe!" >&2
         return 1
     fi
 
-    # Test gzip integrity
+    # Testa a integridade do gzip
     if ! gzip -t "$target/Packages.gz"; then
-        echo "ERROR: $target/Packages.gz is corrupted!" >&2
+        echo "ERRO: $target/Packages.gz está corrompido!" >&2
         return 1
     fi
 
-    # Count packages in index
+    # Conta os pacotes no índice
     local count
     count=$(grep -c "^Package: " "$target/Packages" || true)
-    echo "Verified $count package(s) indexed in Packages."
+    echo "Verificado(s) $count pacote(s) indexado(s) em Packages."
     if [[ "$count" -eq 0 ]]; then
-        echo "WARNING: Repository index is empty (0 packages)." >&2
+        echo "AVISO: o índice do repositório está vazio (0 pacotes)." >&2
         return 1
     fi
 
-    # Check Packages.gz has stanzas
+    # Verifica se o Packages.gz tem stanzas
     local gz_count
     gz_count=$(zcat "$target/Packages.gz" | grep -c "^Package: " || true)
     if [[ "$gz_count" -ne "$count" ]]; then
-        echo "ERROR: Packages ($count) and Packages.gz ($gz_count) count mismatch!" >&2
+        echo "ERRO: contagem divergente entre Packages ($count) e Packages.gz ($gz_count)!" >&2
         return 1
     fi
 
-    echo "Repository verification PASSED ($count packages indexed)."
+    echo "Verificação do repositório APROVADA ($count pacotes indexados)."
     return 0
 }
 
@@ -103,27 +103,27 @@ if [[ "$VERIFY_ONLY" == true ]]; then
     exit 0
 fi
 
-# Find deb packages
+# Localiza os pacotes deb
 mapfile -t DEBS < <(find "$REPO_DIR" -maxdepth 1 -name "*.deb" -type f | sort)
 DEB_COUNT=${#DEBS[@]}
 
 if [[ "$DEB_COUNT" -eq 0 ]]; then
     echo "ERROR: No .deb files found in $REPO_DIR!" >&2
-    echo "Please build packages before creating repository index." >&2
+    echo "Gere os pacotes antes de criar o índice do repositório." >&2
     exit 1
 fi
 
-echo "Found $DEB_COUNT package(s) to index."
+echo "Encontrado(s) $DEB_COUNT pacote(s) para indexar."
 
-# Generate Packages index
+# Gera o índice Packages
 if command -v dpkg-scanpackages >/dev/null 2>&1; then
-    echo "Generating Packages index using dpkg-scanpackages..."
+    echo "Gerando o índice Packages com dpkg-scanpackages..."
     (
         cd "$REPO_DIR"
         dpkg-scanpackages -m . /dev/null > Packages 2>/dev/null || dpkg-scanpackages -m . /dev/null > Packages
     )
 else
-    echo "dpkg-scanpackages not found; using embedded Python 3 generator fallback..."
+    echo "dpkg-scanpackages não encontrado; usando o gerador embutido em Python 3 como fallback..."
     python3 - "$REPO_DIR" <<'PYEOF'
 import os
 import sys
@@ -145,7 +145,7 @@ for deb_path in debs:
         res = subprocess.run(["dpkg-deb", "-f", deb_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
         control_fields = res.stdout.strip()
     except Exception as e:
-        sys.stderr.write(f"Failed to inspect {deb_name}: {e}\n")
+        sys.stderr.write(f"Falha ao inspecionar {deb_name}: {e}\n")
         sys.exit(1)
 
     file_size = os.path.getsize(deb_path)
@@ -169,16 +169,16 @@ out_path = os.path.join(repo_dir, "Packages")
 with open(out_path, "w", encoding="utf-8") as f:
     f.write("\n".join(entries) + "\n")
 
-print(f"Python fallback indexed {len(entries)} package(s).")
+print(f"Fallback Python indexou {len(entries)} pacote(s).")
 PYEOF
 fi
 
-# Compress Packages to Packages.gz
-echo "Compressing Packages index (gzip -9nc)..."
+# Compacta Packages em Packages.gz
+echo "Compactando o índice Packages (gzip -9nc)..."
 gzip -9nc "$REPO_DIR/Packages" > "$REPO_DIR/Packages.gz"
 
-# Generate Release metadata file
-echo "Generating Release metadata file..."
+# Gera o arquivo de metadados Release
+echo "Gerando o arquivo de metadados Release..."
 PKG_SIZE=$(stat -c%s "$REPO_DIR/Packages")
 PKG_SHA256=$(sha256sum "$REPO_DIR/Packages" | awk '{print $1}')
 PKG_MD5=$(md5sum "$REPO_DIR/Packages" | awk '{print $1}')
@@ -204,4 +204,4 @@ SHA256:
 EOF
 
 verify_repo "$REPO_DIR"
-echo "=== Local APT repository generated successfully at: $REPO_DIR ==="
+echo "=== Repositório APT local gerado com sucesso em: $REPO_DIR ==="

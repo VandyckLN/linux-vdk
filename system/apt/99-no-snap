@@ -1,4 +1,4 @@
-# Impede que o apt instale snapd silenciosamente no perfil minimo da distro
+# Impede que o apt instale snapd silenciosamente no perfil mínimo da distro
 Package: snapd
 Pin: release a=*
 Pin-Priority: -10

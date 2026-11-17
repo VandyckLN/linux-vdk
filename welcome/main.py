@@ -1,4 +1,4 @@
-"""CLI entrypoint for the Lumen OS First-Boot Welcome Wizard."""
+"""Ponto de entrada CLI do Assistente de Boas-Vindas do 1º Boot do Lumen OS."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from .welcome_window import WelcomeWindow  # noqa: E402
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Lumen OS First-Boot Welcome Wizard")
+    parser = argparse.ArgumentParser(description="Assistente de Boas-Vindas do 1º Boot do Lumen OS")
     parser.add_argument(
         "--dry-run",
         action="store_true",

@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Lumen OS E2E Common Test Harness (tests/e2e/harness.sh)
-# Provides assertions, ANSI styling, logging, sandbox management,
-# mock root tools, test case lifecycle, and zero-dependency JUnit XML generator.
+# Harness Comum de Testes E2E do Lumen OS (tests/e2e/harness.sh)
+# Fornece asserções, estilo ANSI, logs, gerenciamento de sandbox,
+# ferramentas de root simuladas, ciclo de vida dos casos de teste e gerador JUnit XML sem dependências.
 # ==============================================================================
 set -uo pipefail
 
-# Prevent duplicate sourcing
+# Evita que o arquivo seja carregado (source) em duplicidade
 if [[ -n "${LUMEN_HARNESS_SOURCED:-}" ]]; then
     return 0
 fi
 readonly LUMEN_HARNESS_SOURCED=1
 
 # ------------------------------------------------------------------------------
-# 1. Terminal Styling & Color Configuration
+# 1. Estilo do Terminal e Configuração de Cores
 # ------------------------------------------------------------------------------
 if [[ -t 1 && -z "${NO_COLOR:-}" && "${COLOR_OUTPUT:-1}" == "1" ]]; then
     readonly CLR_RESET=$'\033[0m'
@@ -38,7 +38,7 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 2. Global Test State & Metrics
+# 2. Estado Global e Métricas dos Testes
 # ------------------------------------------------------------------------------
 SUITE_NAME=""
 SUITE_START_TIME=0
@@ -56,7 +56,7 @@ CURRENT_TEST_SKIP_REASON=""
 CURRENT_TEST_FAIL_MSG=""
 CURRENT_TEST_OUTPUT=""
 
-# Accumulator arrays for JUnit XML reporting
+# Arrays acumuladores para o relatório JUnit XML
 declare -a REPORT_IDS=()
 declare -a REPORT_DESCS=()
 declare -a REPORT_STATUSES=()   # "PASS", "FAIL", "SKIP"
@@ -64,7 +64,7 @@ declare -a REPORT_DURATIONS=()
 declare -a REPORT_MESSAGES=()
 declare -a REPORT_CLASSES=()
 
-# Configuration variables
+# Variáveis de configuração
 VERBOSE=${VERBOSE:-0}
 QUIET=${QUIET:-0}
 LOG_FILE=${LOG_FILE:-""}
@@ -75,7 +75,7 @@ MOCK_LOG_DIR=""
 ORIGINAL_PATH="${ORIGINAL_PATH:-$PATH}"
 
 # ------------------------------------------------------------------------------
-# 3. Logging Subsystem
+# 3. Subsistema de Logs
 # ------------------------------------------------------------------------------
 _log_write() {
     local level="$1"
@@ -100,7 +100,7 @@ log_error()   { _log_write "ERROR"   "${CLR_RED}" "$@"; }
 log_debug()   { if [[ "$VERBOSE" -eq 1 ]]; then _log_write "DEBUG" "${CLR_DIM}" "$@"; fi; }
 
 # ------------------------------------------------------------------------------
-# 4. Sandbox & Trap Management
+# 4. Gerenciamento de Sandbox e Traps
 # ------------------------------------------------------------------------------
 create_test_sandbox() {
     local prefix="${1:-lumen-e2e}"
@@ -108,7 +108,7 @@ create_test_sandbox() {
     MOCK_LOG_DIR="${SANDBOX_DIR}/mock_logs"
     mkdir -p "${MOCK_LOG_DIR}"
     export SANDBOX_DIR MOCK_LOG_DIR
-    log_debug "Created test sandbox: ${SANDBOX_DIR}"
+    log_debug "Sandbox de teste criada: ${SANDBOX_DIR}"
 }
 
 cleanup_test_sandbox() {
@@ -118,14 +118,14 @@ cleanup_test_sandbox() {
     fi
 
     if [[ -n "${SANDBOX_DIR:-}" && -d "${SANDBOX_DIR}" ]]; then
-        log_debug "Cleaning up test sandbox: ${SANDBOX_DIR}"
+        log_debug "Limpando a sandbox de teste: ${SANDBOX_DIR}"
         rm -rf "${SANDBOX_DIR}"
         SANDBOX_DIR=""
     fi
 }
 
 # ------------------------------------------------------------------------------
-# 5. Root & System Command Mocking Subsystem
+# 5. Subsistema de Simulação (Mock) de Comandos de Root e do Sistema
 # ------------------------------------------------------------------------------
 enable_mock_root_tools() {
     local mock_dir="${1:-${SANDBOX_DIR:-/tmp}/mock_bin}"
@@ -135,7 +135,7 @@ enable_mock_root_tools() {
     fi
     mkdir -p "${MOCK_LOG_DIR}"
 
-    # Mock: sudo (pass-through without root elevation)
+    # Mock: sudo (repassa a chamada sem elevação de root)
     cat << 'EOF' > "${mock_dir}/sudo"
 #!/usr/bin/env bash
 while [[ $# -gt 0 ]]; do
@@ -220,7 +220,7 @@ EOF
     cat << 'EOF' > "${mock_dir}/qemu-img"
 #!/usr/bin/env bash
 echo "$@" >> "${MOCK_LOG_DIR:-/tmp}/qemu-img.calls"
-# If creating a disk, create dummy file
+# Se estiver criando um disco, cria um arquivo fictício
 if [[ "$1" == "create" ]]; then
     disk_file="${@: -2:1}"
     if [[ "$disk_file" == -* ]]; then disk_file="${@: -1}"; fi
@@ -230,14 +230,14 @@ fi
 exit 0
 EOF
 
-    # Mock: chroot (hermetic: log invocation and exit 0 without executing host commands)
+    # Mock: chroot (hermético: registra a invocação e sai com 0 sem executar comandos do host)
     cat << 'EOF' > "${mock_dir}/chroot"
 #!/usr/bin/env bash
 echo "$@" >> "${MOCK_LOG_DIR:-/tmp}/chroot.calls"
 exit 0
 EOF
 
-    # Mock: mount & umount
+    # Mock: mount e umount
     cat << 'EOF' > "${mock_dir}/mount"
 #!/usr/bin/env bash
 echo "$@" >> "${MOCK_LOG_DIR:-/tmp}/mount.calls"
@@ -262,22 +262,22 @@ EOF
     chmod +x "${mock_dir}"/*
     export ORIGINAL_PATH="${ORIGINAL_PATH:-$PATH}"
     export PATH="${mock_dir}:${PATH}"
-    log_debug "Mock root tools enabled in: ${mock_dir}"
+    log_debug "Ferramentas de root simuladas ativadas em: ${mock_dir}"
 }
 
 disable_mock_root_tools() {
     if [[ -n "${ORIGINAL_PATH:-}" ]]; then
         export PATH="${ORIGINAL_PATH}"
-        log_debug "Mock root tools disabled; PATH restored."
+        log_debug "Ferramentas de root simuladas desativadas; PATH restaurado."
     fi
 }
 
 mock_assert_called() {
     local cmd="$1"
-    local msg="${2:-Expected command '${cmd}' to have been invoked}"
+    local msg="${2:-Esperava-se que o comando '${cmd}' tivesse sido invocado}"
     local call_file="${MOCK_LOG_DIR}/${cmd}.calls"
     if [[ ! -s "$call_file" ]]; then
-        _record_fail "${msg}: '${cmd}' was never called"
+        _record_fail "${msg}: '${cmd}' nunca foi chamado"
         return 1
     fi
     return 0
@@ -286,10 +286,10 @@ mock_assert_called() {
 mock_assert_called_with() {
     local cmd="$1"
     local pattern="$2"
-    local msg="${3:-Expected command '${cmd}' called with pattern '${pattern}'}"
+    local msg="${3:-Esperava-se que o comando '${cmd}' fosse chamado com o padrão '${pattern}'}"
     local call_file="${MOCK_LOG_DIR}/${cmd}.calls"
     if [[ ! -f "$call_file" ]] || ! grep -qE -- "$pattern" "$call_file"; then
-        _record_fail "${msg}: Pattern '${pattern}' not found in ${cmd} calls"
+        _record_fail "${msg}: padrão '${pattern}' não encontrado nas chamadas de ${cmd}"
         return 1
     fi
     return 0
@@ -314,7 +314,7 @@ mock_get_call_count() {
 }
 
 # ------------------------------------------------------------------------------
-# 6. Test Suite & Case Lifecycle
+# 6. Ciclo de Vida da Suíte e dos Casos de Teste
 # ------------------------------------------------------------------------------
 suite_init() {
     SUITE_NAME="$1"
@@ -343,11 +343,11 @@ test_case_start() {
 
     ((SUITE_TOTAL++))
     if [[ "$VERBOSE" -eq 1 ]]; then
-        printf "  %s>>> RUNNING: [%s] %s%s\n" "${CLR_DIM}" "${CURRENT_TEST_ID}" "${CURRENT_TEST_DESC}" "${CLR_RESET}"
+        printf "  %s>>> EXECUTANDO: [%s] %s%s\n" "${CLR_DIM}" "${CURRENT_TEST_ID}" "${CURRENT_TEST_DESC}" "${CLR_RESET}"
     fi
 }
 
-# Alias for test_case_start
+# Alias para test_case_start
 test_start() {
     local name="$1"
     local desc="${2:-$name}"
@@ -360,7 +360,7 @@ _record_fail() {
 }
 
 test_case_fail() {
-    local msg="${1:-Test failed}"
+    local msg="${1:-Teste falhou}"
     _record_fail "$msg"
 }
 
@@ -369,7 +369,7 @@ test_fail() {
 }
 
 test_case_skip() {
-    local reason="${1:-Skipped}"
+    local reason="${1:-Ignorado}"
     CURRENT_TEST_SKIPPED=1
     CURRENT_TEST_SKIP_REASON="$reason"
 }
@@ -436,12 +436,12 @@ suite_finish() {
     total_duration=$(awk -v s="${SUITE_START_TIME}" -v e="${end_time}" 'BEGIN {printf "%.2f", e - s}')
 
     printf "%s----------------------------------------------------------------------%s\n" "${CLR_CYAN}" "${CLR_RESET}"
-    printf "%s  Suite Summary: %s%s\n" "${CLR_BOLD}" "${SUITE_NAME}" "${CLR_RESET}"
-    printf "    Total Tests:   %s%d%s\n" "${CLR_BOLD}" "${SUITE_TOTAL}" "${CLR_RESET}"
-    printf "    Passed:        %s%d%s\n" "${CLR_GREEN}" "${SUITE_PASSED}" "${CLR_RESET}"
-    printf "    Failed:        %s%d%s\n" "${CLR_RED}" "${SUITE_FAILED}" "${CLR_RESET}"
-    printf "    Skipped:       %s%d%s\n" "${CLR_YELLOW}" "${SUITE_SKIPPED}" "${CLR_RESET}"
-    printf "    Duration:      %ss\n" "${total_duration}"
+    printf "%s  Resumo da Suíte: %s%s\n" "${CLR_BOLD}" "${SUITE_NAME}" "${CLR_RESET}"
+    printf "    Total de Testes: %s%d%s\n" "${CLR_BOLD}" "${SUITE_TOTAL}" "${CLR_RESET}"
+    printf "    Aprovados:       %s%d%s\n" "${CLR_GREEN}" "${SUITE_PASSED}" "${CLR_RESET}"
+    printf "    Falharam:        %s%d%s\n" "${CLR_RED}" "${SUITE_FAILED}" "${CLR_RESET}"
+    printf "    Ignorados:       %s%d%s\n" "${CLR_YELLOW}" "${SUITE_SKIPPED}" "${CLR_RESET}"
+    printf "    Duração:         %ss\n" "${total_duration}"
     printf "%s======================================================================%s\n" "${CLR_CYAN}" "${CLR_RESET}"
 
     if [[ -n "$XML_REPORT_FILE" ]]; then
@@ -454,20 +454,20 @@ suite_finish() {
     return 0
 }
 
-# Alias for suite_finish with custom title
+# Alias para suite_finish com título personalizado
 print_tier_summary() {
     suite_finish
 }
 
 # ------------------------------------------------------------------------------
-# 7. Assertion Functions Library
+# 7. Biblioteca de Funções de Asserção
 # ------------------------------------------------------------------------------
 
 assert_file_exists() {
     local file="$1"
-    local msg="${2:-Assertion failed: Expected file to exist}"
+    local msg="${2:-Asserção falhou: Esperava-se que o arquivo existisse}"
     if [[ ! -f "$file" ]]; then
-        _record_fail "${msg} -> Missing regular file: ${file}"
+        _record_fail "${msg} -> Arquivo regular ausente: ${file}"
         return 1
     fi
     return 0
@@ -475,9 +475,9 @@ assert_file_exists() {
 
 assert_file_not_exists() {
     local file="$1"
-    local msg="${2:-Assertion failed: Expected file to NOT exist}"
+    local msg="${2:-Asserção falhou: Esperava-se que o arquivo NÃO existisse}"
     if [[ -e "$file" ]]; then
-        _record_fail "${msg} -> Unexpected file exists: ${file}"
+        _record_fail "${msg} -> Arquivo inesperado existe: ${file}"
         return 1
     fi
     return 0
@@ -485,9 +485,9 @@ assert_file_not_exists() {
 
 assert_dir_exists() {
     local dir="$1"
-    local msg="${2:-Assertion failed: Expected directory to exist}"
+    local msg="${2:-Asserção falhou: Esperava-se que o diretório existisse}"
     if [[ ! -d "$dir" ]]; then
-        _record_fail "${msg} -> Missing directory: ${dir}"
+        _record_fail "${msg} -> Diretório ausente: ${dir}"
         return 1
     fi
     return 0
@@ -495,9 +495,9 @@ assert_dir_exists() {
 
 assert_dir_not_exists() {
     local dir="$1"
-    local msg="${2:-Assertion failed: Expected directory to NOT exist}"
+    local msg="${2:-Asserção falhou: Esperava-se que o diretório NÃO existisse}"
     if [[ -d "$dir" ]]; then
-        _record_fail "${msg} -> Unexpected directory exists: ${dir}"
+        _record_fail "${msg} -> Diretório inesperado existe: ${dir}"
         return 1
     fi
     return 0
@@ -505,9 +505,9 @@ assert_dir_not_exists() {
 
 assert_file_executable() {
     local file="$1"
-    local msg="${2:-Assertion failed: Expected file to be executable}"
+    local msg="${2:-Asserção falhou: Esperava-se que o arquivo fosse executável}"
     if [[ ! -x "$file" ]]; then
-        _record_fail "${msg} -> File is not executable: ${file}"
+        _record_fail "${msg} -> Arquivo não é executável: ${file}"
         return 1
     fi
     return 0
@@ -515,9 +515,9 @@ assert_file_executable() {
 
 assert_file_not_empty() {
     local file="$1"
-    local msg="${2:-Assertion failed: Expected file to be non-empty}"
+    local msg="${2:-Asserção falhou: Esperava-se que o arquivo não estivesse vazio}"
     if [[ ! -s "$file" ]]; then
-        _record_fail "${msg} -> File is missing or empty (0 bytes): ${file}"
+        _record_fail "${msg} -> Arquivo ausente ou vazio (0 bytes): ${file}"
         return 1
     fi
     return 0
@@ -526,15 +526,15 @@ assert_file_not_empty() {
 assert_file_size_gt() {
     local file="$1"
     local min_bytes="$2"
-    local msg="${3:-Assertion failed: File size below threshold}"
+    local msg="${3:-Asserção falhou: Tamanho do arquivo abaixo do limite}"
     if [[ ! -f "$file" ]]; then
-        _record_fail "${msg} -> File not found: ${file}"
+        _record_fail "${msg} -> Arquivo não encontrado: ${file}"
         return 1
     fi
     local size
     size=$(wc -c < "$file" | tr -d ' ')
     if [[ "$size" -le "$min_bytes" ]]; then
-        _record_fail "${msg} -> File ${file} size (${size}B) <= threshold (${min_bytes}B)"
+        _record_fail "${msg} -> Tamanho do arquivo ${file} (${size}B) <= limite (${min_bytes}B)"
         return 1
     fi
     return 0
@@ -543,41 +543,41 @@ assert_file_size_gt() {
 assert_contains() {
     local target="$1"
     local pattern="$2"
-    local msg="${3:-Assertion failed: Pattern not found}"
+    local msg="${3:-Asserção falhou: Padrão não encontrado}"
     if [[ -f "$target" ]]; then
         if ! grep -qE -- "$pattern" "$target"; then
-            _record_fail "${msg} -> Pattern '${pattern}' not found in file '${target}'"
+            _record_fail "${msg} -> Padrão '${pattern}' não encontrado no arquivo '${target}'"
             return 1
         fi
     else
         if [[ ! "$target" =~ $pattern ]]; then
-            _record_fail "${msg} -> Pattern '${pattern}' not found in string"
+            _record_fail "${msg} -> Padrão '${pattern}' não encontrado na string"
             return 1
         fi
     fi
     return 0
 }
 
-# Alias for parameter order (pattern, file)
+# Alias com ordem de parâmetros (padrão, arquivo)
 assert_file_contains() {
     local pattern="$1"
     local file="$2"
-    local msg="${3:-Assertion failed: Pattern not found in file}"
+    local msg="${3:-Asserção falhou: Padrão não encontrado no arquivo}"
     assert_contains "$file" "$pattern" "$msg"
 }
 
 assert_not_contains() {
     local target="$1"
     local pattern="$2"
-    local msg="${3:-Assertion failed: Forbidden pattern found}"
+    local msg="${3:-Asserção falhou: Padrão proibido encontrado}"
     if [[ -f "$target" ]]; then
         if grep -qE -- "$pattern" "$target"; then
-            _record_fail "${msg} -> Forbidden pattern '${pattern}' found in file '${target}'"
+            _record_fail "${msg} -> Padrão proibido '${pattern}' encontrado no arquivo '${target}'"
             return 1
         fi
     else
         if [[ "$target" =~ $pattern ]]; then
-            _record_fail "${msg} -> Forbidden pattern '${pattern}' found in string"
+            _record_fail "${msg} -> Padrão proibido '${pattern}' encontrado na string"
             return 1
         fi
     fi
@@ -587,19 +587,19 @@ assert_not_contains() {
 assert_matches_regex() {
     local string="$1"
     local regex="$2"
-    local msg="${3:-Assertion failed: Regex mismatch}"
+    local msg="${3:-Asserção falhou: Regex não corresponde}"
     if [[ ! "$string" =~ $regex ]]; then
-        _record_fail "${msg} -> String does not match regex '${regex}'"
+        _record_fail "${msg} -> String não corresponde à regex '${regex}'"
         return 1
     fi
     return 0
 }
 
-# Alias for parameter order (regex, string)
+# Alias com ordem de parâmetros (regex, string)
 assert_match() {
     local regex="$1"
     local string="$2"
-    local msg="${3:-Assertion failed: Regex match failed}"
+    local msg="${3:-Asserção falhou: Falha na correspondência da regex}"
     assert_matches_regex "$string" "$regex" "$msg"
 }
 
@@ -614,7 +614,7 @@ assert_exit_code() {
     LAST_CMD_OUTPUT="$output"
 
     if [[ "$status" -ne "$expected" ]]; then
-        _record_fail "Expected exit code ${expected}, but got ${status} executing: ${cmd[*]} (Output: ${output:0:200})"
+        _record_fail "Código de saída esperado ${expected}, mas obtido ${status} ao executar: ${cmd[*]} (Saída: ${output:0:200})"
         return 1
     fi
     return 0
@@ -628,7 +628,7 @@ assert_command_output_contains() {
     output=$("${cmd[@]}" 2>&1) || true
     LAST_CMD_OUTPUT="$output"
     if [[ ! "$output" =~ $pattern ]]; then
-        _record_fail "Command output does not match pattern '${pattern}'. Executed: ${cmd[*]}"
+        _record_fail "A saída do comando não corresponde ao padrão '${pattern}'. Executado: ${cmd[*]}"
         return 1
     fi
     return 0
@@ -642,7 +642,7 @@ assert_command_output_not_contains() {
     output=$("${cmd[@]}" 2>&1) || true
     LAST_CMD_OUTPUT="$output"
     if [[ "$output" =~ $pattern ]]; then
-        _record_fail "Forbidden pattern '${pattern}' found in command output. Executed: ${cmd[*]}"
+        _record_fail "Padrão proibido '${pattern}' encontrado na saída do comando. Executado: ${cmd[*]}"
         return 1
     fi
     return 0
@@ -653,7 +653,7 @@ assert_syntax_valid() {
     local lang="${2:-auto}"
 
     if [[ ! -f "$file" ]]; then
-        _record_fail "Cannot validate syntax: File not found: ${file}"
+        _record_fail "Não foi possível validar a sintaxe: arquivo não encontrado: ${file}"
         return 1
     fi
 
@@ -673,34 +673,34 @@ assert_syntax_valid() {
         sh|bash)
             local err
             if ! err=$(bash -n "$file" 2>&1); then
-                _record_fail "Bash syntax error in ${file}: ${err}"
+                _record_fail "Erro de sintaxe Bash em ${file}: ${err}"
                 return 1
             fi
             ;;
         py|python)
             local err
             if ! err=$(python3 -m py_compile "$file" 2>&1); then
-                _record_fail "Python syntax error in ${file}: ${err}"
+                _record_fail "Erro de sintaxe Python em ${file}: ${err}"
                 return 1
             fi
             ;;
         json)
             local err
             if ! err=$(python3 -m json.tool "$file" > /dev/null 2>&1); then
-                _record_fail "JSON syntax error in ${file}: ${err}"
+                _record_fail "Erro de sintaxe JSON em ${file}: ${err}"
                 return 1
             fi
             ;;
         yaml|yml)
             local err
             if ! err=$(python3 -c "import yaml; yaml.safe_load(open('$file', 'r'))" 2>&1); then
-                _record_fail "YAML syntax error in ${file}: ${err}"
+                _record_fail "Erro de sintaxe YAML em ${file}: ${err}"
                 return 1
             fi
             ;;
         ini|conf|desc)
             if [[ ! -s "$file" ]]; then
-                _record_fail "Config file is empty: ${file}"
+                _record_fail "Arquivo de configuração vazio: ${file}"
                 return 1
             fi
             ;;
@@ -709,7 +709,7 @@ assert_syntax_valid() {
             open_b=$(grep -o '{' "$file" | wc -l)
             close_b=$(grep -o '}' "$file" | wc -l)
             if [[ "$open_b" -ne "$close_b" ]]; then
-                _record_fail "Unbalanced braces in stylesheet ${file}: {=${open_b}, }=${close_b}"
+                _record_fail "Chaves desbalanceadas na folha de estilo ${file}: {=${open_b}, }=${close_b}"
                 return 1
             fi
             ;;
@@ -720,9 +720,9 @@ assert_syntax_valid() {
 assert_eq() {
     local expected="$1"
     local actual="$2"
-    local msg="${3:-Assertion failed: Equality mismatch}"
+    local msg="${3:-Asserção falhou: Valores diferentes}"
     if [[ "$expected" != "$actual" ]]; then
-        _record_fail "${msg} -> Expected: '${expected}', Got: '${actual}'"
+        _record_fail "${msg} -> Esperado: '${expected}', Obtido: '${actual}'"
         return 1
     fi
     return 0
@@ -731,9 +731,9 @@ assert_eq() {
 assert_ne() {
     local unexpected="$1"
     local actual="$2"
-    local msg="${3:-Assertion failed: Expected values to differ}"
+    local msg="${3:-Asserção falhou: Esperava-se que os valores fossem diferentes}"
     if [[ "$unexpected" == "$actual" ]]; then
-        _record_fail "${msg} -> Unexpected match: '${actual}'"
+        _record_fail "${msg} -> Correspondência inesperada: '${actual}'"
         return 1
     fi
     return 0
@@ -742,7 +742,7 @@ assert_ne() {
 assert_ge() {
     local val1="$1"
     local val2="$2"
-    local msg="${3:-Assertion failed: Expected val1 >= val2}"
+    local msg="${3:-Asserção falhou: Esperava-se val1 >= val2}"
     if [[ "$val1" -lt "$val2" ]]; then
         _record_fail "${msg} -> ${val1} < ${val2}"
         return 1
@@ -753,7 +753,7 @@ assert_ge() {
 assert_gt() {
     local val1="$1"
     local val2="$2"
-    local msg="${3:-Assertion failed: Expected val1 > val2}"
+    local msg="${3:-Asserção falhou: Esperava-se val1 > val2}"
     if [[ "$val1" -le "$val2" ]]; then
         _record_fail "${msg} -> ${val1} <= ${val2}"
         return 1
@@ -764,15 +764,15 @@ assert_gt() {
 assert_symlink_points_to() {
     local symlink="$1"
     local expected="$2"
-    local msg="${3:-Assertion failed: Symlink target mismatch}"
+    local msg="${3:-Asserção falhou: Destino do symlink diverge}"
     if [[ ! -L "$symlink" ]]; then
-        _record_fail "${msg} -> Path is not a symlink: ${symlink}"
+        _record_fail "${msg} -> O caminho não é um symlink: ${symlink}"
         return 1
     fi
     local actual
     actual=$(readlink "$symlink")
     if [[ "$actual" != "$expected" ]]; then
-        _record_fail "${msg} -> Symlink points to '${actual}', expected '${expected}'"
+        _record_fail "${msg} -> O symlink aponta para '${actual}', esperado '${expected}'"
         return 1
     fi
     return 0
@@ -782,22 +782,22 @@ assert_json_key_value() {
     local json_file="$1"
     local key="$2"
     local expected="$3"
-    local msg="${4:-Assertion failed: JSON value mismatch}"
+    local msg="${4:-Asserção falhou: Valor JSON diverge}"
     if [[ ! -f "$json_file" ]]; then
-        _record_fail "${msg} -> Missing JSON file: ${json_file}"
+        _record_fail "${msg} -> Arquivo JSON ausente: ${json_file}"
         return 1
     fi
     local actual
     actual=$(python3 -c "import json; d=json.load(open('$json_file')); print(d.get('$key', ''))" 2>/dev/null)
     if [[ "$actual" != "$expected" ]]; then
-        _record_fail "${msg} -> Key '${key}': Expected '${expected}', got '${actual}'"
+        _record_fail "${msg} -> Chave '${key}': esperado '${expected}', obtido '${actual}'"
         return 1
     fi
     return 0
 }
 
 # ------------------------------------------------------------------------------
-# 8. Zero-Dependency JUnit XML Generation & Aggregation
+# 8. Geração e Agregação de JUnit XML sem Dependências
 # ------------------------------------------------------------------------------
 _xml_escape() {
     local str="$1"
@@ -865,7 +865,7 @@ EOF
   </testsuite>
 </testsuites>
 EOF
-    log_debug "JUnit XML report generated at: ${out_file}"
+    log_debug "Relatório JUnit XML gerado em: ${out_file}"
 }
 
 aggregate_junit_xml() {
@@ -918,7 +918,7 @@ for path in in_files:
                 pass
             root.append(suite)
     except Exception as e:
-        print(f"Warning: Failed to aggregate XML from {path}: {e}", file=sys.stderr)
+        print(f"Aviso: falha ao agregar o XML de {path}: {e}", file=sys.stderr)
 
 root.set("tests", str(total_tests))
 root.set("failures", str(total_failures))
@@ -933,5 +933,5 @@ tree = ET.ElementTree(root)
 tree.write(out_file, encoding="utf-8", xml_declaration=True)
 PYEOF
 
-    log_debug "Aggregated JUnit XML report generated at: ${out_file}"
+    log_debug "Relatório JUnit XML agregado gerado em: ${out_file}"
 }

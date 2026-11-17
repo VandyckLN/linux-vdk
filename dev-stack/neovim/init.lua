@@ -1,4 +1,4 @@
--- Lumen OS - Configuracao enxuta e rapida do Neovim (zero bloat)
+-- Lumen OS - Configuração enxuta e rápida do Neovim (zero bloat)
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.mouse = "a"

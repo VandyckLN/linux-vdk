@@ -1,84 +1,84 @@
-# Project: Lumen OS — Distro Packaging & ISO Pipeline
+# Projeto: Lumen OS — Empacotamento da Distro e Pipeline de ISO
 
-## Architecture
-- **Distribution Base**: Ubuntu 26.04.1 LTS (Resolute Raccoon), Linux `x86_64`.
-- **Desktop Environment**: Custom Curved Glass shell (GTK4 + Layer-Shell) running atop Hyprland 0.53 (Wayland compositor) with Wayfire fallback.
-- **Packaging Layer**: Modular Debian `.deb` packages (`lumen-shell`, `lumen-compositor`, `lumen-system`, `lumen-dev-stack`, `lumen-welcome`, and umbrella `lumen-desktop`) structured under `/usr/share/lumen-os/` with entrypoints in `/usr/bin/`. Offline local APT repository index for air-gapped installation.
-- **Installer Layer**: Calamares 3.3.14 (Qt 6 / KF6) configured with Curved Glass visual branding (`branding.desc`, `stylesheet.qss`, QML presentation slideshow) and automated post-installation environment deployment (`lumen-postinstall.sh`).
-- **ISO Generation Engine**: `debootstrap (minbase)` + `casper 26.04` + `mksquashfs (zstd)` + unified GRUB 2 (UEFI ESP `efi.img` + BIOS El Torito hybrid MBR) + `xorriso`.
-- **CI / Automation / Validation**: GitHub Actions workflow (`build-iso.yml`), QEMU multi-mode VM runner (`test-iso-qemu.sh`), and User Build Guide (`docs/BUILD_ISO.md`).
+## Arquitetura
+- **Base da Distribuição**: Ubuntu 26.04.1 LTS (Resolute Raccoon), Linux `x86_64`.
+- **Ambiente de Desktop**: Shell Curved Glass próprio (GTK4 + Layer-Shell) rodando sobre o Hyprland 0.53 (compositor Wayland), com fallback para o Wayfire.
+- **Camada de Empacotamento**: Pacotes Debian `.deb` modulares (`lumen-shell`, `lumen-compositor`, `lumen-system`, `lumen-dev-stack`, `lumen-welcome` e o pacote guarda-chuva `lumen-desktop`) organizados em `/usr/share/lumen-os/`, com pontos de entrada em `/usr/bin/`. Índice de repositório APT local offline para instalação sem rede.
+- **Camada do Instalador**: Calamares 3.3.14 (Qt 6 / KF6) configurado com o branding visual Curved Glass (`branding.desc`, `stylesheet.qss`, slideshow de apresentação em QML) e implantação automatizada do ambiente pós-instalação (`lumen-postinstall.sh`).
+- **Motor de Geração da ISO**: `debootstrap (minbase)` + `casper 26.04` + `mksquashfs (zstd)` + GRUB 2 unificado (ESP UEFI `efi.img` + MBR híbrido El Torito para BIOS) + `xorriso`.
+- **CI / Automação / Validação**: Workflow do GitHub Actions (`build-iso.yml`), executor de VM QEMU multimodo (`test-iso-qemu.sh`) e Guia de Build para o usuário (`docs/BUILD_ISO.md`).
 
-## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | Modular .deb Packaging Recipes | Debian packaging control and rules for shell, compositor, system, dev-stack, welcome | M1 | R1 |
-| 2 | Metapackage & Virtual Aliases | Umbrella `lumen-desktop` and `distro-*` virtual packages for clean dependency resolution | M1 | R1 |
-| 3 | Automated .deb Build & Local APT Repo | Scripts to compile packages and generate offline APT pool (`Packages.gz`) | M1 | R1 |
-| 4 | Calamares Master Settings & Flow | `settings.conf` defining execution sequence, branding integration, and unchrooted stages | M2 | R2 |
-| 5 | Curved Glass Qt6 Branding & QSS Theme | `branding.desc` and Qt 6 `stylesheet.qss` implementing frosted glass, specular borders, and CTA styling | M2 | R2 |
-| 6 | Calamares QML Presentation Slideshow | Dynamic QML presentation showcasing Lumen OS shell, dev stack, and features during installation | M2 | R2 |
-| 7 | Calamares Core Module Configs | Configs for `welcome`, `locale`, `keyboard`, `partition`, `users`, `unpackfs`, `bootloader` | M2 | R2 |
-| 8 | Post-Installation Hooks & Wayland Wrapper | `lumen-postinstall.sh`, `launch-calamares.sh`, and desktop launcher for live session | M2 | R2 |
-| 9 | Idempotent ISO Build Script | `scripts/build-iso.sh` with debootstrap minbase, mount traps, casper live user configuration | M3 | R3 |
-| 10 | SquashFS & Casper Manifest Generation | `mksquashfs` with zstd compression, `filesystem.manifest` and `filesystem.manifest-remove` | M3 | R3 |
-| 11 | Unified Dual Bootloader (UEFI + BIOS) | Unified GRUB 2 architecture with `efi.img` (FAT) and El Torito MBR image | M3 | R3 |
-| 12 | Xorriso Master Image & Checksum | `xorriso -as mkisofs` command generating hybrid ISO-9660 and sha256 checksum | M3 | R3 |
-| 13 | GitHub Actions CI Automation | `.github/workflows/build-iso.yml` with runner disk cleanup, rootfs cache, and release publishing | M4 | R4 |
-| 14 | Automated QEMU Test Script | `scripts/test-iso-qemu.sh` with KVM/TCG detection, OVMF discovery, and virtual test disk | M4 | R5 |
-| 15 | Comprehensive User Build Guide | `docs/BUILD_ISO.md` covering native Ubuntu, WSL2 loopless build, QEMU, and CI triggers | M4 | R6 |
-| 16 | E2E Opaque-Box Test Suite | Comprehensive multi-tier test suite verifying packaging, Calamares, ISO, CI, and QEMU | M5 | E2E Track |
-| 17 | Adversarial Hardening (Tier 5) | White-box adversarial testing, edge cases, negative tests, and forensic verification | M5 | Final Milestone |
+## Inventário de Funcionalidades
+| # | Funcionalidade | Descrição | Marco | Origem |
+|---|----------------|-----------|-------|--------|
+| 1 | Receitas Modulares de Empacotamento .deb | Controle e regras de empacotamento Debian para shell, compositor, system, dev-stack e welcome | M1 | R1 |
+| 2 | Metapacote e Aliases Virtuais | Pacote guarda-chuva `lumen-desktop` e pacotes virtuais `distro-*` para resolução limpa de dependências | M1 | R1 |
+| 3 | Build Automatizado de .deb e Repositório APT Local | Scripts para compilar os pacotes e gerar o pool APT offline (`Packages.gz`) | M1 | R1 |
+| 4 | Configuração Mestre e Fluxo do Calamares | `settings.conf` definindo a sequência de execução, a integração do branding e as etapas fora do chroot | M2 | R2 |
+| 5 | Branding Qt6 Curved Glass e Tema QSS | `branding.desc` e `stylesheet.qss` do Qt 6 implementando vidro fosco, bordas especulares e estilo dos CTAs | M2 | R2 |
+| 6 | Slideshow de Apresentação QML do Calamares | Apresentação dinâmica em QML mostrando o shell, a stack dev e os recursos do Lumen OS durante a instalação | M2 | R2 |
+| 7 | Configuração dos Módulos Principais do Calamares | Configurações de `welcome`, `locale`, `keyboard`, `partition`, `users`, `unpackfs`, `bootloader` | M2 | R2 |
+| 8 | Hooks de Pós-Instalação e Wrapper Wayland | `lumen-postinstall.sh`, `launch-calamares.sh` e lançador desktop para a sessão live | M2 | R2 |
+| 9 | Script Idempotente de Build da ISO | `scripts/build-iso.sh` com debootstrap minbase, traps de montagem e configuração do usuário live do casper | M3 | R3 |
+| 10 | Geração do SquashFS e dos Manifestos do Casper | `mksquashfs` com compressão zstd, `filesystem.manifest` e `filesystem.manifest-remove` | M3 | R3 |
+| 11 | Bootloader Duplo Unificado (UEFI + BIOS) | Arquitetura GRUB 2 unificada com `efi.img` (FAT) e imagem MBR El Torito | M3 | R3 |
+| 12 | Imagem Mestre Xorriso e Checksum | Comando `xorriso -as mkisofs` gerando ISO-9660 híbrida e checksum sha256 | M3 | R3 |
+| 13 | Automação de CI no GitHub Actions | `.github/workflows/build-iso.yml` com limpeza de disco do runner, cache do rootfs e publicação de release | M4 | R4 |
+| 14 | Script Automatizado de Teste no QEMU | `scripts/test-iso-qemu.sh` com detecção de KVM/TCG, descoberta do OVMF e disco virtual de teste | M4 | R5 |
+| 15 | Guia Completo de Build para o Usuário | `docs/BUILD_ISO.md` cobrindo build nativo no Ubuntu, build sem loop no WSL2, QEMU e gatilhos do CI | M4 | R6 |
+| 16 | Suíte de Testes E2E Caixa-Preta | Suíte de testes multinível abrangente verificando empacotamento, Calamares, ISO, CI e QEMU | M5 | Trilha E2E |
+| 17 | Endurecimento Adversarial (Tier 5) | Testes adversariais caixa-branca, casos de borda, testes negativos e verificação forense | M5 | Marco Final |
 
-## Milestones
-| # | Name | Scope | Dependencies | Status |
-|---|------|-------|-------------|--------|
-| 1 | M1: Debian Packaging (.deb) | Package definitions, build scripts, local repo generation | none | DONE |
-| 2 | M2: Calamares Installer & Branding | Settings, modules, Curved Glass QSS/QML, postinstall hook | M1 | DONE |
-| 3 | M3: ISO Generation Pipeline | Idempotent build-iso.sh, debootstrap, casper, squashfs, dual-boot GRUB | M1, M2 | IN_PROGRESS |
-| 4 | M4: CI, QEMU & User Documentation | GitHub Actions workflow, QEMU test runner, BUILD_ISO.md guide | M3 | PLANNED |
-| 5 | M5: E2E Validation & Adversarial Hardening | 100% E2E test pass (Tiers 1-4) + Tier 5 Adversarial Hardening | M1, M2, M3, M4 | PLANNED |
+## Marcos
+| # | Nome | Escopo | Dependências | Status |
+|---|------|--------|--------------|--------|
+| 1 | M1: Empacotamento Debian (.deb) | Definições de pacotes, scripts de build, geração do repositório local | nenhuma | CONCLUÍDO |
+| 2 | M2: Instalador Calamares e Branding | Configurações, módulos, QSS/QML Curved Glass, hook de pós-instalação | M1 | CONCLUÍDO |
+| 3 | M3: Pipeline de Geração da ISO | build-iso.sh idempotente, debootstrap, casper, squashfs, GRUB dual-boot | M1, M2 | EM_ANDAMENTO |
+| 4 | M4: CI, QEMU e Documentação do Usuário | Workflow do GitHub Actions, executor de testes QEMU, guia BUILD_ISO.md | M3 | PLANEJADO |
+| 5 | M5: Validação E2E e Endurecimento Adversarial | 100% dos testes E2E aprovados (Tiers 1-4) + Tier 5 de Endurecimento Adversarial | M1, M2, M3, M4 | PLANEJADO |
 
-## Interface Contracts
+## Contratos de Interface
 
-### M1 ↔ M2 (Packaging ↔ Calamares)
-- **Package Installation Root**: All Lumen custom components installed into `/usr/share/lumen-os/<module>/`.
-- **System Binaries**: Executable wrappers created in `/usr/bin/` (`lumen-shell`, `lumen-welcome`, `lumen-session-hyprland`, `lumen-dev-setup`, `lumen-system-tune`).
-- **Post-Install Target**: Calamares `shellprocess@postinstall` invokes `/usr/local/bin/lumen-postinstall.sh` inside chroot, copying skeleton configs to `/etc/skel` and target user home (`UID 1000`).
+### M1 ↔ M2 (Empacotamento ↔ Calamares)
+- **Raiz de Instalação dos Pacotes**: Todos os componentes próprios do Lumen são instalados em `/usr/share/lumen-os/<módulo>/`.
+- **Binários do Sistema**: Wrappers executáveis criados em `/usr/bin/` (`lumen-shell`, `lumen-welcome`, `lumen-session-hyprland`, `lumen-dev-setup`, `lumen-system-tune`).
+- **Destino da Pós-Instalação**: O `shellprocess@postinstall` do Calamares invoca `/usr/local/bin/lumen-postinstall.sh` dentro do chroot, copiando as configurações de skeleton para `/etc/skel` e para a home do usuário de destino (`UID 1000`).
 
-### M1/M2 ↔ M3 (Packaging/Calamares ↔ ISO Builder)
-- **Local Repo Path**: Local packages staged at `dist/debs/` and indexed via `dpkg-scanpackages` to `/opt/lumen-repo/` or injected during chroot setup.
-- **Calamares Deployment**: Calamares configurations installed to `/etc/calamares/` and branding to `/usr/share/calamares/branding/lumen/`.
-- **Live User**: Casper provisions default live user `lumen` (NOPASSWD sudo) with autostart desktop entry for Calamares (`launch-calamares.sh`).
-- **Filesystem Manifests**: Casper generates `/casper/filesystem.manifest` and `/casper/filesystem.manifest-remove` during Stage 4.
+### M1/M2 ↔ M3 (Empacotamento/Calamares ↔ Gerador da ISO)
+- **Caminho do Repositório Local**: Pacotes locais preparados em `dist/debs/` e indexados via `dpkg-scanpackages` em `/opt/lumen-repo/` ou injetados durante a configuração do chroot.
+- **Implantação do Calamares**: Configurações do Calamares instaladas em `/etc/calamares/` e o branding em `/usr/share/calamares/branding/lumen/`.
+- **Usuário Live**: O Casper provisiona o usuário live padrão `lumen` (sudo NOPASSWD) com entrada de autostart do Calamares (`launch-calamares.sh`).
+- **Manifestos do Sistema de Arquivos**: O Casper gera `/casper/filesystem.manifest` e `/casper/filesystem.manifest-remove` durante o Estágio 4.
 
-### M3 ↔ M4 (ISO Builder ↔ CI & QEMU)
-- **Output ISO Artifact**: ISO output strictly at `dist/lumen-os-26.04-amd64.iso` and checksum `dist/lumen-os-26.04-amd64.iso.sha256`.
-- **CI Dependency Invocation**: `sudo ./scripts/package-debs.sh` followed by `sudo ./scripts/build-iso.sh`.
-- **QEMU Invocation**: `./scripts/test-iso-qemu.sh [path-to-iso]` accepting `--bios`, `--uefi`, `--ram`, `--smp`, `--headless`.
+### M3 ↔ M4 (Gerador da ISO ↔ CI e QEMU)
+- **Artefato ISO de Saída**: ISO gerada estritamente em `dist/lumen-os-26.04-amd64.iso`, com checksum em `dist/lumen-os-26.04-amd64.iso.sha256`.
+- **Invocação das Dependências no CI**: `sudo ./scripts/package-debs.sh` seguido de `sudo ./scripts/build-iso.sh`.
+- **Invocação do QEMU**: `./scripts/test-iso-qemu.sh [caminho-da-iso]` aceitando `--bios`, `--uefi`, `--ram`, `--smp`, `--headless`.
 
-## Code Layout
+## Estrutura do Código
 ```
 /home/vandyck/projetos/Distro/
 ├── packaging/
-│   ├── debian/                         # Debian control, rules, install specs
-│   ├── templates/                      # Binaries, desktop entries, polkit
-│   ├── build-debs.sh                   # Modular package build script
-│   └── create-local-repo.sh            # Packages.gz generator
+│   ├── debian/                         # control, rules e specs de instalação Debian
+│   ├── templates/                      # Binários, entradas desktop, polkit
+│   ├── build-debs.sh                   # Script modular de build dos pacotes
+│   └── create-local-repo.sh            # Gerador do Packages.gz
 ├── installer/
 │   └── calamares/
-│       ├── settings.conf               # Master Calamares configuration
-│       ├── modules/                    # Module configs (*.conf)
-│       ├── branding/lumen/             # Branding descriptor, QSS, QML slideshow
+│       ├── settings.conf               # Configuração mestre do Calamares
+│       ├── modules/                    # Configurações dos módulos (*.conf)
+│       ├── branding/lumen/             # Descritor de branding, QSS, slideshow QML
 │       └── scripts/                    # launch-calamares.sh, lumen-postinstall.sh
 ├── scripts/
-│   ├── package-debs.sh                 # Root convenience wrapper for packaging
-│   ├── build-iso.sh                    # Master ISO generation script
-│   └── test-iso-qemu.sh                # Automated QEMU test launcher
+│   ├── package-debs.sh                 # Wrapper de conveniência para o empacotamento
+│   ├── build-iso.sh                    # Script mestre de geração da ISO
+│   └── test-iso-qemu.sh                # Lançador automatizado de testes no QEMU
 ├── .github/
 │   └── workflows/
-│       └── build-iso.yml               # GitHub Actions CI workflow
+│       └── build-iso.yml               # Workflow de CI do GitHub Actions
 ├── docs/
-│   └── BUILD_ISO.md                    # Practical User Guide
+│   └── BUILD_ISO.md                    # Guia prático para o usuário
 └── tests/
-    └── e2e/                            # Dual-Track E2E Test Suite
+    └── e2e/                            # Suíte de testes E2E de trilha dupla
 ```

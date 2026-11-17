@@ -1,4 +1,4 @@
-"""Lightweight system & developer telemetry without heavy dependencies."""
+"""Telemetria leve do sistema e de desenvolvimento, sem dependências pesadas."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 @dataclass
 class SystemSnapshot:
-    """Point-in-time metrics displayed in the shell notice & dev cards."""
+    """Métricas pontuais exibidas nos cards de aviso e dev do shell."""
 
     cpu_percent: int
     ram_used_gb: float
@@ -26,7 +26,7 @@ class SystemSnapshot:
 
 
 class SystemMetrics:
-    """Reads /proc directly for minimal overhead and queries optional dev services."""
+    """Lê o /proc diretamente para overhead mínimo e consulta serviços dev opcionais."""
 
     def __init__(self, projects_dir: str = "~/projetos") -> None:
         self.projects_dir = Path(os.path.expanduser(projects_dir))
@@ -90,7 +90,7 @@ class SystemMetrics:
 
     @staticmethod
     def read_listening_ports(limit: int = 4) -> list[str]:
-        """Reads IPv4/IPv6 TCP listening ports from /proc/net/tcp* without spawning ss."""
+        """Lê as portas TCP IPv4/IPv6 em escuta a partir de /proc/net/tcp* sem iniciar o ss."""
         ports: set[int] = set()
         for proc_file in ("/proc/net/tcp", "/proc/net/tcp6"):
             try:

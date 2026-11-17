@@ -12,13 +12,13 @@ EDITOR_CHOICE=""
 
 usage() {
   cat <<EOF
-Uso: $0 [opcoes]
+Uso: $0 [opções]
   --all               Executa cli + dotfiles + mise + docker
   --cli               Instala ferramentas CLI base (dev-stack/packages.list)
   --dotfiles          Instala configs de Kitty, Starship, tmux e Neovim
   --mise              Instala o gerenciador de runtimes mise
   --runtimes LIST     Runtimes via mise separados por virgula (ex: node@lts,python@3.12,go@latest,rust@latest)
-  --docker            Instala docker.io + docker-compose-v2 e adiciona usuario ao grupo docker
+  --docker            Instala docker.io + docker-compose-v2 e adiciona usuário ao grupo docker
   --editor NAME       Instala editor: neovim | vscode | zed | cursor
 EOF
 }
@@ -53,7 +53,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Opcao desconhecida: $1" >&2
+      echo "Opção desconhecida: $1" >&2
       exit 1
       ;;
   esac
@@ -123,7 +123,7 @@ case "$EDITOR_CHOICE" in
     sudo apt-get install -y neovim
     ;;
   vscode)
-    echo "[Dev Stack] Instalando Visual Studio Code via repositorio Microsoft APT..."
+    echo "[Dev Stack] Instalando Visual Studio Code via repositório Microsoft APT..."
     sudo apt-get install -y wget gpg
     wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/packages.microsoft.gpg >/dev/null
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
@@ -143,4 +143,4 @@ case "$EDITOR_CHOICE" in
     ;;
 esac
 
-echo "[Dev Stack] Concluido!"
+echo "[Dev Stack] Concluído!"

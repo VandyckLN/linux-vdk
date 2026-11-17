@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Lumen OS — Calamares Post-Installation Chroot Hook
-# Deployed to: /usr/local/bin/lumen-postinstall.sh
-# Invoked by: Calamares shellprocess@postinstall inside target chroot
+# Lumen OS — Hook de Pós-Instalação do Calamares (chroot)
+# Instalado em: /usr/local/bin/lumen-postinstall.sh
+# Invocado por: shellprocess@postinstall do Calamares dentro do chroot de destino
 # =============================================================================
 set -euo pipefail
 
 echo "=========================================================="
-echo " [Lumen OS] Starting Post-Installation Environment Setup"
+echo " [Lumen OS] Iniciando a Configuração do Ambiente Pós-Instalação"
 echo "=========================================================="
 
-# 1. Discover Primary User
+# 1. Descobrir o usuário principal
 TARGET_USER="${1:-}"
 if [[ -z "$TARGET_USER" || "$TARGET_USER" == "\${USER}" || "$TARGET_USER" == "root" ]]; then
     TARGET_USER=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd || echo "")
@@ -23,9 +23,9 @@ TARGET_UID=$(getent passwd "$TARGET_USER" | cut -d: -f3 || echo "1000")
 TARGET_GID=$(getent passwd "$TARGET_USER" | cut -d: -f4 || echo "1000")
 TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6 || echo "/home/$TARGET_USER")
 
-echo "[Lumen PostInstall] Target user: $TARGET_USER (UID: $TARGET_UID, Home: $TARGET_HOME)"
+echo "[Lumen PostInstall] Usuário de destino: $TARGET_USER (UID: $TARGET_UID, Home: $TARGET_HOME)"
 
-# 2. Add User to Required Groups
+# 2. Adicionar o usuário aos grupos necessários
 REQUIRED_GROUPS=("sudo" "adm" "cdrom" "dip" "plugdev" "audio" "video" "render" "netdev" "docker")
 for grp in "${REQUIRED_GROUPS[@]}"; do
     if getent group "$grp" >/dev/null 2>&1; then
@@ -33,7 +33,7 @@ for grp in "${REQUIRED_GROUPS[@]}"; do
     fi
 done
 
-# 3. Locate Source Configuration Assets
+# 3. Localizar os assets de configuração de origem
 LUMEN_SHARE="/usr/share/lumen-os"
 if [[ ! -d "$LUMEN_SHARE" ]]; then
     if [[ -d "/etc/lumen-os" ]]; then
@@ -43,7 +43,7 @@ if [[ ! -d "$LUMEN_SHARE" ]]; then
     fi
 fi
 
-# 4. Provision Skeleton (/etc/skel) and Target User Home
+# 4. Provisionar o skeleton (/etc/skel) e a home do usuário de destino
 TARGET_DIRS=(
     "/etc/skel/.config/hypr"
     "/etc/skel/.config/kitty"
@@ -66,31 +66,31 @@ for d in "${TARGET_DIRS[@]}"; do
     mkdir -p "$d"
 done
 
-# Provision Kitty config
+# Provisiona a configuração do Kitty
 if [[ -f "$LUMEN_SHARE/dev-stack/kitty/kitty.conf" ]]; then
     install -m 644 "$LUMEN_SHARE/dev-stack/kitty/kitty.conf" /etc/skel/.config/kitty/kitty.conf
     install -m 644 "$LUMEN_SHARE/dev-stack/kitty/kitty.conf" "$TARGET_HOME/.config/kitty/kitty.conf"
 fi
 
-# Provision Starship config
+# Provisiona a configuração do Starship
 if [[ -f "$LUMEN_SHARE/dev-stack/starship/starship.toml" ]]; then
     install -m 644 "$LUMEN_SHARE/dev-stack/starship/starship.toml" /etc/skel/.config/starship.toml
     install -m 644 "$LUMEN_SHARE/dev-stack/starship/starship.toml" "$TARGET_HOME/.config/starship.toml"
 fi
 
-# Provision Tmux config
+# Provisiona a configuração do Tmux
 if [[ -f "$LUMEN_SHARE/dev-stack/tmux/tmux.conf" ]]; then
     install -m 644 "$LUMEN_SHARE/dev-stack/tmux/tmux.conf" /etc/skel/.config/tmux/tmux.conf
     install -m 644 "$LUMEN_SHARE/dev-stack/tmux/tmux.conf" "$TARGET_HOME/.config/tmux/tmux.conf"
 fi
 
-# Provision Neovim config
+# Provisiona a configuração do Neovim
 if [[ -f "$LUMEN_SHARE/dev-stack/neovim/init.lua" ]]; then
     install -m 644 "$LUMEN_SHARE/dev-stack/neovim/init.lua" /etc/skel/.config/nvim/init.lua
     install -m 644 "$LUMEN_SHARE/dev-stack/neovim/init.lua" "$TARGET_HOME/.config/nvim/init.lua"
 fi
 
-# Provision Shell default config
+# Provisiona a configuração padrão do Shell
 if [[ -f "$LUMEN_SHARE/shell/config/shell.default.json" ]]; then
     install -m 644 "$LUMEN_SHARE/shell/config/shell.default.json" /etc/skel/.config/lumen-os/shell.json
     install -m 644 "$LUMEN_SHARE/shell/config/shell.default.json" "$TARGET_HOME/.config/lumen-os/shell.json"
@@ -99,7 +99,7 @@ elif [[ -f "/usr/share/lumen-os/config/shell.default.json" ]]; then
     install -m 644 "/usr/share/lumen-os/config/shell.default.json" "$TARGET_HOME/.config/lumen-os/shell.json"
 fi
 
-# Provision Compositor configs (Hyprland & Wayfire) with path sanitization
+# Provisiona as configurações do compositor (Hyprland e Wayfire) com sanitização de caminhos
 if [[ -f "$LUMEN_SHARE/compositor/hyprland/hyprland.conf" ]]; then
     sed -e 's|\$HOME/projetos/Distro|/usr/share/lumen-os|g' \
         -e 's|python3 -m shell.main|lumen-shell|g' \
@@ -113,7 +113,7 @@ if [[ -f "$LUMEN_SHARE/compositor/wayfire/wayfire.ini" ]]; then
     cp /etc/skel/.config/wayfire.ini "$TARGET_HOME/.config/wayfire.ini"
 fi
 
-# Provision Dev Init into .bashrc
+# Provisiona o Dev Init no .bashrc
 for bashrc in "/etc/skel/.bashrc" "$TARGET_HOME/.bashrc"; do
     if [[ ! -f "$bashrc" ]]; then
         touch "$bashrc" 2>/dev/null || true
@@ -130,8 +130,8 @@ EOF
     fi
 done
 
-# 5. Activate System Tuning (sysctl + zram)
-echo "[Lumen PostInstall] Activating sysctl and zram tuning..."
+# 5. Ativar o ajuste de sistema (sysctl + zram)
+echo "[Lumen PostInstall] Ativando o ajuste de sysctl e zram..."
 if [[ -f "$LUMEN_SHARE/system/sysctl/99-lumen-dev.conf" ]]; then
     install -Dm 644 "$LUMEN_SHARE/system/sysctl/99-lumen-dev.conf" /etc/sysctl.d/99-lumen-dev.conf
     sysctl -p /etc/sysctl.d/99-lumen-dev.conf 2>/dev/null || true
@@ -148,19 +148,19 @@ if [[ -f "$LUMEN_SHARE/system/apt/99-no-snap" ]]; then
     install -Dm 644 "$LUMEN_SHARE/system/apt/99-no-snap" /etc/apt/preferences.d/99-no-snap
 fi
 
-# 6. Install First-Boot Welcome Autostart (Self-Limiting)
-echo "[Lumen PostInstall] Installing First-Boot Welcome autostart..."
+# 6. Instalar o autostart do assistente de 1º boot (autolimitado)
+echo "[Lumen PostInstall] Instalando o autostart do assistente de 1º boot..."
 mkdir -p /etc/xdg/autostart /usr/share/applications
 
-# Remove any duplicate unguarded autostart entry installed by packaging
+# Remove qualquer entrada de autostart duplicada e sem proteção instalada pelo empacotamento
 rm -f /etc/xdg/autostart/dev.lumenos.welcome.desktop
 
 cat > /etc/xdg/autostart/lumen-welcome.desktop <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Lumen OS Welcome
-GenericName=First-Boot Setup Wizard
-Comment=Configure Curved Glass Shell and developer environment
+GenericName=Assistente de Configuração do 1º Boot
+Comment=Configure o Curved Glass Shell e o ambiente de desenvolvimento
 Exec=sh -c 'test ! -f "$HOME/.config/lumen-os/onboarding.done" && exec /usr/bin/lumen-welcome || exit 0'
 Icon=lumen-welcome
 Terminal=false
@@ -176,8 +176,8 @@ cat > /usr/share/applications/lumen-welcome.desktop <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Lumen OS Welcome
-GenericName=First-Boot Setup Wizard
-Comment=Configure Curved Glass Shell and developer environment
+GenericName=Assistente de Configuração do 1º Boot
+Comment=Configure o Curved Glass Shell e o ambiente de desenvolvimento
 Exec=/usr/bin/lumen-welcome
 Icon=lumen-welcome
 Terminal=false
@@ -186,33 +186,33 @@ StartupNotify=true
 EOF
 chmod 644 /usr/share/applications/lumen-welcome.desktop
 
-# 7. Set Default Systemd Target to Graphical
+# 7. Definir o target padrão do systemd como gráfico
 systemctl set-default graphical.target 2>/dev/null || true
 
-# 8. Update Initramfs and GRUB Bootloader
+# 8. Atualizar o initramfs e o bootloader GRUB
 if command -v update-initramfs >/dev/null 2>&1; then
-    echo "[Lumen PostInstall] Updating initramfs for installed kernels..."
+    echo "[Lumen PostInstall] Atualizando o initramfs dos kernels instalados..."
     update-initramfs -u -k all 2>/dev/null || update-initramfs -c -k all 2>/dev/null || true
 fi
 
 if command -v update-grub >/dev/null 2>&1; then
-    echo "[Lumen PostInstall] Updating GRUB bootloader configuration..."
+    echo "[Lumen PostInstall] Atualizando a configuração do bootloader GRUB..."
     update-grub 2>/dev/null || true
 fi
 
-# 9. Clean up Live Medium Artifacts
-echo "[Lumen PostInstall] Cleaning up live installer artifacts..."
+# 9. Limpar artefatos da mídia live
+echo "[Lumen PostInstall] Limpando artefatos do instalador live..."
 rm -f /etc/skel/Desktop/install-lumen.desktop /etc/skel/.config/autostart/launch-calamares.desktop
 rm -f "$TARGET_HOME/Desktop/install-lumen.desktop" 2>/dev/null || true
 rm -f "$TARGET_HOME/.config/autostart/launch-calamares.desktop" 2>/dev/null || true
 rm -f /etc/sudoers.d/casper /etc/sudoers.d/99-casper 2>/dev/null || true
 rm -f /etc/xdg/autostart/dev.lumenos.welcome.desktop 2>/dev/null || true
 
-# 10. Fix Home Permissions
+# 10. Corrigir permissões da home
 chown -R "$TARGET_UID:$TARGET_GID" "$TARGET_HOME" 2>/dev/null || true
 chmod 700 "$TARGET_HOME" 2>/dev/null || true
 
 echo "=========================================================="
-echo " [Lumen OS] Post-Installation Completed Successfully"
+echo " [Lumen OS] Pós-Instalação Concluída com Sucesso"
 echo "=========================================================="
 exit 0

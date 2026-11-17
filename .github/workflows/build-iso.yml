@@ -29,15 +29,15 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
+      - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      - name: Free disk space on runner
+      - name: Liberar espaço em disco no runner
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
           df -h
 
-      - name: Install host build dependencies
+      - name: Instalar dependências de build do host
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -54,16 +54,16 @@ jobs:
             qemu-system-x86 \
             ovmf
 
-      - name: Build .deb packages and local APT repository
+      - name: Gerar pacotes .deb e repositório APT local
         run: |
           chmod +x scripts/*.sh packaging/*.sh
           ./scripts/package-debs.sh
 
-      - name: Run E2E validation suite
+      - name: Executar suíte de validação E2E
         run: |
           bash tests/e2e/run-e2e-tests.sh --quiet
 
-      - name: Build Linux VDK installable ISO (Ubuntu 26.04 Minimal)
+      - name: Gerar ISO instalável do Linux VDK (Ubuntu 26.04 Minimal)
         run: |
           if [ "${{ inputs.clean_build }}" = "true" ]; then
             sudo ./scripts/build-iso.sh --clean
@@ -71,14 +71,14 @@ jobs:
             sudo ./scripts/build-iso.sh
           fi
 
-      - name: Verify ISO and QEMU dry-run
+      - name: Verificar ISO e dry-run do QEMU
         run: |
           ls -lh dist/
           sha256sum -c dist/linux-vdk-26.04-amd64.iso.sha256
           ./scripts/test-iso-qemu.sh --dry-run --uefi
           ./scripts/test-iso-qemu.sh --dry-run --bios
 
-      - name: Upload ISO and checksum artifacts
+      - name: Publicar artefatos da ISO e checksum
         uses: actions/upload-artifact@v4
         with:
           name: linux-vdk-26.04-amd64-iso
