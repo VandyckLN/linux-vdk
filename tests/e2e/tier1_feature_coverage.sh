@@ -418,5 +418,11 @@ test_case_start "T1_F7_02" "Lista de pacotes permitidos existe e não está vazi
 assert_file_not_empty "${WORKSPACE_ROOT}/system/root-helper/allowed-packages.list"
 test_case_end
 
+# T1-F7-03: Biblioteca de elevação
+test_case_start "T1_F7_03" "elevate.sh existe e tem sintaxe bash válida"
+assert_file_exists "${WORKSPACE_ROOT}/system/lib/elevate.sh"
+assert_syntax_valid "${WORKSPACE_ROOT}/system/lib/elevate.sh" "sh"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

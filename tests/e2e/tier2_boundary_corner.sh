@@ -495,5 +495,76 @@ assert_contains "$LAST_CMD_OUTPUT" "/etc/apt/sources.list.d/vscode.list" "Deve g
 assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo https://exemplo.invalido
 test_case_end
 
+# Mocks de sudo/pkexec para o as_root: ficam na frente do PATH e registram a chamada
+elevate="${WORKSPACE_ROOT}/system/lib/elevate.sh"
+elev_bin="${SANDBOX_DIR}/elev_bin"
+elev_calls="${SANDBOX_DIR}/elev.calls"
+mkdir -p "$elev_bin"
+for fake in sudo pkexec; do
+    cat > "${elev_bin}/${fake}" <<'FAKE'
+#!/bin/bash
+echo "$(basename "$0") $*" >> "${ELEV_CALLS}"
+exit "${MOCK_EXIT:-0}"
+FAKE
+    chmod +x "${elev_bin}/${fake}"
+done
+printf '#!/bin/bash\nexit 0\n' > "${SANDBOX_DIR}/fake-installed-helper"
+chmod +x "${SANDBOX_DIR}/fake-installed-helper"
+
+# T2-F7-17
+test_case_start "T2_F7_17" "as_root usa sudo no terminal"
+: > "$elev_calls"
+assert_exit_code 0 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" LUMEN_ROOT_HELPER_BIN=/caminho/inexistente \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$(cat "$elev_calls")" "sudo " "Deve chamar o sudo"
+assert_contains "$(cat "$elev_calls")" "system/lumen-root-helper apt-install git" "Deve usar o helper do repo"
+test_case_end
+
+# T2-F7-18
+test_case_start "T2_F7_18" "as_root usa pkexec com o helper instalado quando LUMEN_ELEVATE=pkexec"
+: > "$elev_calls"
+assert_exit_code 0 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" LUMEN_ELEVATE=pkexec \
+    LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$(cat "$elev_calls")" "pkexec ${SANDBOX_DIR}/fake-installed-helper apt-install git" "Deve chamar o pkexec com o helper instalado"
+assert_not_contains "$(cat "$elev_calls")" "sudo" "Não pode cair no sudo"
+test_case_end
+
+# T2-F7-19
+test_case_start "T2_F7_19" "as_root com pkexec e helper não instalado falha com mensagem clara"
+: > "$elev_calls"
+output=$(env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" LUMEN_ELEVATE=pkexec LUMEN_ROOT_HELPER_BIN=/caminho/inexistente \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate" 2>&1) && status=0 || status=$?
+assert_ne "0" "$status" "Deve falhar"
+assert_contains "$output" "O pkexec precisa do lumen-root-helper instalado" "Deve explicar que falta o helper"
+assert_eq "" "$(cat "$elev_calls")" "Não pode chamar pkexec nem sudo"
+test_case_end
+
+# T2-F7-20
+test_case_start "T2_F7_20" "as_root traduz o cancelamento do pkexec"
+: > "$elev_calls"
+assert_exit_code 126 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=126 LUMEN_ELEVATE=pkexec \
+    LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$LAST_CMD_OUTPUT" "Autenticação cancelada. Nada foi alterado." "Deve traduzir o 126"
+test_case_end
+
+# T2-F7-21
+test_case_start "T2_F7_21" "as_root traduz falta de autorização do pkexec"
+: > "$elev_calls"
+assert_exit_code 127 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=127 LUMEN_ELEVATE=pkexec \
+    LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$LAST_CMD_OUTPUT" "Sem permissão de administrador para esta ação." "Deve traduzir o 127"
+test_case_end
+
+# T2-F7-22
+test_case_start "T2_F7_22" "Falha do helper é propagada e aborta o script chamador"
+: > "$elev_calls"
+assert_exit_code 2 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=2 LUMEN_ROOT_HELPER_BIN=/caminho/inexistente \
+    bash -c 'set -e; source "$1"; as_root apt-install git; echo CONTINUOU' _ "$elevate"
+assert_not_contains "$LAST_CMD_OUTPUT" "CONTINUOU" "O chamador com set -e deve abortar"
+test_case_end
+
 # Finaliza a suíte
 suite_finish
