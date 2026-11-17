@@ -284,7 +284,7 @@ class CurvedSidebarWindow(Gtk.ApplicationWindow):
             Gtk4LayerShell.set_anchor(self, anchor, True)
             Gtk4LayerShell.set_margin(self, anchor, 14)
 
-        if self.config.data.get("bar", {}).get("exclusive_zone", False):
+        if self.config.data.get("bar", {}).get("exclusive_zone", True):
             Gtk4LayerShell.auto_exclusive_zone_enable(self)
         else:
             Gtk4LayerShell.set_exclusive_zone(self, 0)

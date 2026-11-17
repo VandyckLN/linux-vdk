@@ -10,6 +10,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Pango  # noqa: E402
 
+from ..config_store import display_name  # noqa: E402
+
 
 class ProfileCard(Gtk.Box):
     """Exibe a marca da distro, o gatilho de expandir/recolher e o perfil do usuário."""
@@ -56,8 +58,8 @@ class ProfileCard(Gtk.Box):
         self.profile_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.profile_row.set_valign(Gtk.Align.CENTER)
 
-        name = str(user_cfg.get("name", "Nova"))
-        initials = "".join(part[0].upper() for part in name.split()[:2]) or "N"
+        name = display_name(user_cfg)
+        initials = "".join(part[0].upper() for part in name.split()[:2]) or "?"
         avatar = Gtk.Label(label=initials)
         avatar.add_css_class("profile-avatar")
         avatar.set_halign(Gtk.Align.CENTER)

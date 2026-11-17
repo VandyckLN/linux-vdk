@@ -23,6 +23,9 @@ from .stack_installer import (  # noqa: E402
 
 BASE_CSS = Path(__file__).resolve().parent.parent / "shell" / "styles" / "curved_glass.css"
 
+# Literal de bytes: só ASCII aqui dentro (sem acentos nem comentários em PT-BR).
+# Em .choice-card.selected, os rótulos (.profile-name/.profile-subtitle) têm cor
+# clara própria; no fundo claro do card selecionado eles precisam escurecer.
 EXTRA_CSS = b"""
 .welcome-card {
     background-color: rgba(24, 27, 34, 0.70);
@@ -41,6 +44,7 @@ EXTRA_CSS = b"""
 
 .choice-card {
     background-color: rgba(255, 255, 255, 0.06);
+    background-image: none;
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 14px;
     padding: 10px 14px;
@@ -57,6 +61,14 @@ EXTRA_CSS = b"""
     background-color: rgba(255, 255, 255, 0.90);
     border-color: #ffffff;
     color: #161920;
+}
+
+.choice-card.selected .profile-name {
+    color: #161920;
+}
+
+.choice-card.selected .profile-subtitle {
+    color: rgba(22, 25, 32, 0.72);
 }
 
 .primary-cta {
@@ -119,9 +131,6 @@ class WelcomeWindow(Gtk.ApplicationWindow):
             )
 
     def _build_ui(self) -> None:
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         outer.set_margin_start(24)
         outer.set_margin_end(24)
@@ -130,6 +139,11 @@ class WelcomeWindow(Gtk.ApplicationWindow):
 
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         card.add_css_class("welcome-card")
+        card.set_vexpand(True)
+
+        # Só as opções rolam; a linha de ações fica fixa no rodapé do card,
+        # para Fechar/Aplicar continuarem visíveis em telas baixas.
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
 
         # Header
         header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -145,10 +159,10 @@ class WelcomeWindow(Gtk.ApplicationWindow):
         header.append(badge)
         header.append(title)
         header.append(subtitle)
-        card.append(header)
+        content.append(header)
 
         # 1. Orientação da barra
-        card.append(self._section_title("1. POSIÇÃO DA BARRA CURVED GLASS"))
+        content.append(self._section_title("1. POSIÇÃO DA BARRA CURVED GLASS"))
         orient_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         orient_row.set_homogeneous(True)
 
@@ -164,10 +178,10 @@ class WelcomeWindow(Gtk.ApplicationWindow):
         )
         orient_row.append(self.btn_vertical)
         orient_row.append(self.btn_horizontal)
-        card.append(orient_row)
+        content.append(orient_row)
 
         # 2. Editor Principal
-        card.append(self._section_title("2. EDITOR PRINCIPAL"))
+        content.append(self._section_title("2. EDITOR PRINCIPAL"))
         editor_grid = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         editor_grid.set_homogeneous(True)
         for opt in EDITORS:
@@ -178,20 +192,20 @@ class WelcomeWindow(Gtk.ApplicationWindow):
             )
             self._editor_buttons[opt.option_id] = btn
             editor_grid.append(btn)
-        card.append(editor_grid)
+        content.append(editor_grid)
 
         # 3. Runtimes (mise)
-        card.append(self._section_title("3. RUNTIMES VIA MISE"))
+        content.append(self._section_title("3. RUNTIMES VIA MISE"))
         rt_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
         for rt in RUNTIMES:
             chk = Gtk.CheckButton(label=rt.title)
             chk.set_active(rt.option_id in ("node@lts", "python@3.12"))
             self._runtime_checks[rt.option_id] = chk
             rt_row.append(chk)
-        card.append(rt_row)
+        content.append(rt_row)
 
         # 4. Otimizações & Ferramentas Base
-        card.append(self._section_title("4. SISTEMA & CONTAINERS"))
+        content.append(self._section_title("4. SISTEMA & CONTAINERS"))
         sys_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.chk_tuning = Gtk.CheckButton(
             label="Otimizações Ubuntu Dev (zram comprimido + inotify 524k watchers)"
@@ -216,7 +230,7 @@ class WelcomeWindow(Gtk.ApplicationWindow):
             self.chk_no_snap,
         ):
             sys_box.append(chk)
-        card.append(sys_box)
+        content.append(sys_box)
 
         # Saída de log
         self.log_buffer = Gtk.TextBuffer()
@@ -227,7 +241,7 @@ class WelcomeWindow(Gtk.ApplicationWindow):
         log_scroll = Gtk.ScrolledWindow()
         log_scroll.set_min_content_height(120)
         log_scroll.set_child(self.log_view)
-        card.append(log_scroll)
+        content.append(log_scroll)
 
         # Actions
         actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -249,11 +263,17 @@ class WelcomeWindow(Gtk.ApplicationWindow):
         actions.append(self.status_lbl)
         actions.append(close_btn)
         actions.append(self.apply_btn)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        scroll.set_child(content)
+
+        card.append(scroll)
         card.append(actions)
 
         outer.append(card)
-        scroll.set_child(outer)
-        self.set_child(scroll)
+        self.set_child(outer)
 
         self._refresh_choice_styles()
 

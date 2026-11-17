@@ -447,5 +447,120 @@ auth_admin_keep" "$policy_out" "A policy deve apontar para o helper, permitir GU
 assert_file_not_exists "${WORKSPACE_ROOT}/packaging/templates/dev.lumenos.welcome.policy" "A policy antiga do lumen-welcome não deve mais existir"
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F8: Interface do Shell e do Welcome
+# ==============================================================================
+
+# T1-F8-01: Botões de vidro zeram o background-image do tema
+# O tema padrão do GTK4 pinta botões com background-image claro; se a regra só
+# define background-color, o branco do tema cobre o vidro e o texto some.
+test_case_start "T1_F8_01" "Regras de botão de vidro zeram o background-image do tema GTK"
+css_out="$(python3 -I - "${WORKSPACE_ROOT}/shell/styles/curved_glass.css" "${WORKSPACE_ROOT}/welcome/welcome_window.py" <<'PY' 2>&1
+import re
+import sys
+
+shell_css = open(sys.argv[1], encoding="utf-8").read()
+welcome_src = open(sys.argv[2], encoding="utf-8").read()
+extra = re.search(r'EXTRA_CSS = b"""(.*?)"""', welcome_src, re.S)
+css = shell_css + "\n" + (extra.group(1) if extra else "")
+css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+rules = {}
+for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+    for sel in selector.split(","):
+        rules.setdefault(sel.strip(), []).append(body)
+
+problems = []
+for cls in (".icon-btn", ".nav-item", ".sub-item", ".orientation-pill", ".choice-card"):
+    bodies = rules.get(cls)
+    if not bodies:
+        problems.append(f"{cls}: regra base ausente")
+        continue
+    joined = " ".join(bodies)
+    if not re.search(r"background-image\s*:", joined):
+        problems.append(f"{cls}: background-color sem zerar background-image")
+print("\n".join(problems) or "ok")
+PY
+)"
+assert_eq "ok" "$css_out" "Toda regra base de botão de vidro deve definir background-image"
+test_case_end
+
+# T1-F8-02: Barra reserva espaço na tela
+test_case_start "T1_F8_02" "Config padrão reserva a zona exclusiva da barra (não cobre as janelas)"
+zone="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["bar"]["exclusive_zone"])' "${WORKSPACE_ROOT}/config/shell.default.json" 2>&1)"
+assert_eq "True" "$zone" "bar.exclusive_zone deve ser true por padrão"
+test_case_end
+
+# T1-F8-03: Nome do perfil vem do usuário do sistema
+test_case_start "T1_F8_03" "Perfil mostra o usuário real quando a config não define um nome"
+name_out="$(cd "$WORKSPACE_ROOT" && python3 -c '
+import json, os, pwd
+from shell.config_store import display_name
+entry = pwd.getpwuid(os.getuid())
+esperado = entry.pw_gecos.split(",")[0].strip() or entry.pw_name
+padrao = json.load(open("config/shell.default.json"))["user"]
+print(padrao.get("name", "") == "")
+print(display_name({}) == esperado)
+print(display_name({"name": "   "}) == esperado)
+print(display_name({"name": "Ana Dev"}))
+' 2>&1)"
+assert_eq "True
+True
+True
+Ana Dev" "$name_out" "Sem nome configurado, o perfil deve usar o nome real do usuário"
+test_case_end
+
+# T1-F8-04: Botões do welcome sempre visíveis
+test_case_start "T1_F8_04" "Botões Fechar/Aplicar do welcome ficam fora da área de rolagem"
+layout_out="$(python3 -I - "${WORKSPACE_ROOT}/welcome/welcome_window.py" <<'PY' 2>&1
+import re
+import sys
+
+src = open(sys.argv[1], encoding="utf-8").read()
+build = src.split("def _build_ui", 1)[1].split("\n    def ", 1)[0]
+checks = {
+    "conteúdo rolável dentro do card": re.search(r"card\.append\(scroll\)", build),
+    "ações fixas no card": re.search(r"card\.append\(actions\)", build),
+    "ações não ficam no conteúdo rolável": not re.search(r"content\.append\(actions\)", build),
+}
+print("\n".join(k for k, ok in checks.items() if not ok) or "ok")
+PY
+)"
+assert_eq "ok" "$layout_out" "A linha de ações deve ficar fora do ScrolledWindow"
+test_case_end
+
+# T1-F8-06: Texto legível no card selecionado
+# O card selecionado tem fundo claro; os rótulos internos têm classes próprias com
+# cor branca, então precisam de uma regra escura específica para o estado selecionado.
+test_case_start "T1_F8_06" "Rótulos do card selecionado do welcome usam cor escura"
+sel_out="$(python3 -I - "${WORKSPACE_ROOT}/welcome/welcome_window.py" <<'PY' 2>&1
+import re
+import sys
+
+src = open(sys.argv[1], encoding="utf-8").read()
+css = re.search(r'EXTRA_CSS = b"""(.*?)"""', src, re.S).group(1)
+faltando = []
+for label in (".profile-name", ".profile-subtitle"):
+    m = re.search(r"\.choice-card\.selected\s+" + re.escape(label) + r"[^{]*\{([^}]*)\}", css)
+    if not m or not re.search(r"color:\s*(#1|rgba\(\s*2[0-9],)", m.group(1)):
+        faltando.append(label)
+print("\n".join(faltando) or "ok")
+PY
+)"
+assert_eq "ok" "$sel_out" "Rótulos dentro do .choice-card.selected precisam de cor escura"
+test_case_end
+
+# T1-F8-07: Módulos Python do shell e do welcome compilam
+test_case_start "T1_F8_07" "Todos os módulos Python do shell e do welcome compilam"
+while IFS= read -r py_file; do
+    assert_syntax_valid "$py_file" "py"
+done < <(find "${WORKSPACE_ROOT}/shell" "${WORKSPACE_ROOT}/welcome" -name '*.py' -not -path '*/__pycache__/*' | sort)
+test_case_end
+
+# T1-F8-05: Textos com acentuação correta
+test_case_start "T1_F8_05" "Textos visíveis do welcome usam acentuação correta"
+assert_not_contains "$(cat "${WORKSPACE_ROOT}/welcome/stack_installer.py")" "Repositorio" "Escreva 'Repositório' com acento"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

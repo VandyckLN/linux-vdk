@@ -1,5 +1,8 @@
 /* Curved Glass Shell - Folha de Estilo GTK4
  * Emula vidro curvo fosco com bordas especulares e legibilidade nítida no modo escuro.
+ *
+ * Regras de botão precisam de `background-image: none`: o tema padrão do GTK4
+ * pinta botões com um background-image claro que cobre o background-color translúcido.
  */
 
 window.curved-shell-window {
@@ -67,6 +70,7 @@ window.curved-shell-preview {
 
 .icon-btn {
     background-color: rgba(255, 255, 255, 0.07);
+    background-image: none;
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 10px;
     color: #e6ebf2;
@@ -126,6 +130,7 @@ window.curved-shell-preview {
 /* Itens de navegação */
 .nav-item {
     background-color: transparent;
+    background-image: none;
     border: 1px solid transparent;
     border-radius: 12px;
     color: rgba(240, 244, 250, 0.80);
@@ -157,6 +162,7 @@ window.curved-shell-preview {
 
 .sub-item {
     background-color: transparent;
+    background-image: none;
     border-radius: 10px;
     color: rgba(235, 240, 248, 0.68);
     font-size: 12px;
@@ -233,6 +239,7 @@ window.curved-shell-preview {
 
 .orientation-pill {
     background-color: rgba(120, 148, 255, 0.22);
+    background-image: none;
     border: 1px solid rgba(154, 178, 255, 0.45);
     border-radius: 999px;
     color: #eef2ff;

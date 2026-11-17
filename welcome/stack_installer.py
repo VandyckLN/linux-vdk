@@ -25,7 +25,7 @@ class StackOption:
 
 EDITORS: list[StackOption] = [
     StackOption("neovim", "Neovim", "Leve, direto no terminal com config limpa"),
-    StackOption("vscode", "VS Code", "Repositorio oficial Microsoft APT"),
+    StackOption("vscode", "VS Code", "Repositório oficial Microsoft APT"),
     StackOption("zed", "Zed Editor", "Editor nativo rápido em Rust"),
     StackOption("cursor", "Cursor", "Instrução/download oficial .deb"),
 ]
