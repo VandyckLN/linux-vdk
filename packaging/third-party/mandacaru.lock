@@ -1,0 +1,4 @@
+# Versão do Mandacaru (EDR) embarcada na ISO. Para atualizar, troque as três chaves abaixo.
+MANDACARU_VERSION=0.3.0
+MANDACARU_URL=https://github.com/VandyckLN/mandacaru/releases/download/v0.3.0/mandacaru_0.3.0_all.deb
+MANDACARU_SHA256=408d8a56e38d1b0c455d32c30455d777184ce1d9b5c02f6b2e2086f32acaa402

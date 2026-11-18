@@ -1,0 +1,7 @@
+# Força LF no checkout, mesmo com core.autocrlf=true (scripts bash quebram com CRLF)
+* text=auto eol=lf
+
+# Binários
+*.png binary
+*.iso binary
+*.deb binary

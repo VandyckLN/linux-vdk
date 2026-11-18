@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import pwd
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,15 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
         else:
             merged[key] = value
     return merged
+
+
+def display_name(user_cfg: dict[str, Any]) -> str:
+    """Nome exibido no perfil: o da config ou, se vazio, o nome real do usuário do sistema."""
+    name = str(user_cfg.get("name") or "").strip()
+    if name:
+        return name
+    entry = pwd.getpwuid(os.getuid())
+    return entry.pw_gecos.split(",")[0].strip() or entry.pw_name
 
 
 class ConfigStore:

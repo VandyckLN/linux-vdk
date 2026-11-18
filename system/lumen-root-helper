@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+# lumen-root-helper: executa, como root, apenas ações administrativas fixas.
+# Chamado via pkexec (polkit) pelo assistente de primeiro boot ou pelos scripts.
+# Uso: lumen-root-helper <ação> [args...]
+# Ações: apt-install <pacote>... | system-tune [--no-snap] | docker-group | vscode-repo
+# Saída: 0 sucesso, 2 ação/argumento inválido, 3 não é root, outros repassados.
+# LUMEN_ROOT_HELPER_DRY_RUN=1 apenas imprime os comandos (sem exigir root).
+set -euo pipefail
+# Arquivos de sistema criados aqui não podem herdar o umask do chamador.
+umask 022
+
+# O pkexec limpa o ambiente: não depende de PATH, HOME nem do diretório atual.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+export DEBIAN_FRONTEND=noninteractive
+
+APT_STAMP="/var/lib/lumen-os/apt-updated.stamp"
+APT_STAMP_MAX_MIN=10
+# Espera até 120 s pelo lock do dpkg (unattended-upgrades o segura no 1º boot).
+APT_LOCK_OPT=(-o DPkg::Lock::Timeout=120)
+PACKAGE_REGEX='^[a-z0-9][a-z0-9+.-]*$'
+
+# Diretório de dados: instalado em /usr/bin usa /usr/share; no checkout, a pasta do script.
+resolve_data_dir() {
+    local self
+    self="$(readlink -f "${BASH_SOURCE[0]}")"
+    if [[ "$self" == "/usr/bin/lumen-root-helper" ]]; then
+        echo "/usr/share/lumen-os/system"
+    else
+        dirname "$self"
+    fi
+}
+
+log() { echo "[root-helper] $*"; }
+
+die_usage() {
+    echo "[root-helper] ERRO: $*" >&2
+    exit 2
+}
+
+is_dry_run() { [[ "${LUMEN_ROOT_HELPER_DRY_RUN:-}" == "1" ]]; }
+
+# Exige root, exceto no dry-run (que só imprime).
+require_root() {
+    is_dry_run && return 0
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "[root-helper] ERRO: é preciso executar como root (use o pkexec)." >&2
+        exit 3
+    fi
+}
+
+# Imprime o comando no dry-run; senão, executa prefixando cada linha da saída
+# (stdout+stderr) com [root-helper]. O pipefail faz o status do comando, e não
+# o do sed, ser o status da função.
+run() {
+    if is_dry_run; then
+        log "[dry-run] $*"
+    else
+        "$@" 2>&1 | sed -u 's/^/[root-helper] /'
+    fi
+}
+
+# Cada pacote deve casar com a regex e constar na lista permitida.
+validate_packages() {
+    [[ $# -gt 0 ]] || die_usage "apt-install exige ao menos um pacote."
+
+    local list
+    list="$(resolve_data_dir)/root-helper/allowed-packages.list"
+    [[ -r "$list" ]] || die_usage "lista de pacotes permitidos não encontrada."
+
+    local allowed=() line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line//$'\r'/}"
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        allowed+=("$line")
+    done < "$list"
+
+    local pkg item found
+    for pkg in "$@"; do
+        [[ "$pkg" =~ $PACKAGE_REGEX ]] || die_usage "nome de pacote inválido: ${pkg}"
+        found=0
+        for item in "${allowed[@]}"; do
+            if [[ "$item" == "$pkg" ]]; then found=1; break; fi
+        done
+        [[ "$found" -eq 1 ]] || die_usage "pacote não permitido: ${pkg}"
+    done
+}
+
+# O apt-get update só roda se o carimbo não existir ou for mais antigo que o limite.
+apt_update_if_stale() {
+    if is_dry_run || [[ -z "$(find "$APT_STAMP" -mmin "-${APT_STAMP_MAX_MIN}" 2>/dev/null)" ]]; then
+        run apt-get "${APT_LOCK_OPT[@]}" update
+    fi
+}
+
+# Caminho interno de instalação (pacotes já validados e root já exigido).
+apt_install_validated() {
+    apt_update_if_stale
+    run apt-get "${APT_LOCK_OPT[@]}" install -y -- "$@"
+    if ! is_dry_run; then
+        mkdir -p "$(dirname "$APT_STAMP")"
+        touch "$APT_STAMP"
+    fi
+}
+
+action_apt_install() {
+    validate_packages "$@"
+    require_root
+    apt_install_validated "$@"
+}
+
+action_system_tune() {
+    local data_dir no_snap=0
+    if [[ $# -gt 1 ]]; then die_usage "system-tune aceita apenas --no-snap."; fi
+    if [[ $# -eq 1 ]]; then
+        [[ "$1" == "--no-snap" ]] || die_usage "argumento inválido para system-tune: $1"
+        no_snap=1
+    fi
+    validate_packages systemd-zram-generator
+    require_root
+    data_dir="$(resolve_data_dir)"
+
+    run install -Dm644 "${data_dir}/sysctl/99-lumen-dev.conf" /etc/sysctl.d/99-lumen-dev.conf
+    run sysctl --system
+    apt_install_validated systemd-zram-generator
+    run install -Dm644 "${data_dir}/zram/zram-generator.conf" /etc/systemd/zram-generator.conf
+    run systemctl daemon-reload
+    run systemctl restart systemd-zram-setup@zram0.service || true
+    if [[ "$no_snap" -eq 1 ]]; then
+        run install -Dm644 "${data_dir}/apt/99-no-snap" /etc/apt/preferences.d/99-no-snap
+    fi
+}
+
+# Usuário chamador: PKEXEC_UID (via getent) ou SUDO_USER (via id). Nunca por argumento.
+resolve_caller_user() {
+    local uid="" name=""
+    if [[ -n "${PKEXEC_UID:-}" ]]; then
+        [[ "$PKEXEC_UID" =~ ^[0-9]+$ ]] || die_usage "PKEXEC_UID inválido."
+        uid="$PKEXEC_UID"
+        name="$(getent passwd "$uid" | cut -d: -f1)" || true
+    elif [[ -n "${SUDO_USER:-}" ]]; then
+        name="$SUDO_USER"
+        uid="$(id -u -- "$name" 2>/dev/null)" || true
+    else
+        die_usage "não foi possível identificar o usuário chamador."
+    fi
+    [[ -n "$name" && "$uid" =~ ^[0-9]+$ ]] || die_usage "usuário chamador não encontrado."
+    [[ "$uid" -ge 1000 ]] || die_usage "recusado: UID ${uid} é de root ou de sistema (mínimo 1000)."
+    [[ "$uid" -lt 65534 ]] || die_usage "recusado: UID ${uid} é reservado (nobody e afins; máximo 65533)."
+    CALLER_USER="$name"
+}
+
+action_docker_group() {
+    [[ $# -eq 0 ]] || die_usage "docker-group não aceita argumentos."
+    resolve_caller_user
+    require_root
+    run usermod -aG docker -- "$CALLER_USER"
+}
+
+MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+MS_KEYRING="/usr/share/keyrings/packages.microsoft.gpg"
+VSCODE_LIST="/etc/apt/sources.list.d/vscode.list"
+VSCODE_REPO_URL="https://packages.microsoft.com/repos/code"
+
+# Gera o keyring e o vscode.list em arquivos temporários e só os instala (modo 644)
+# se tudo deu certo: um download falho não sobrescreve um keyring bom.
+VSCODE_TMP=""
+cleanup_vscode_tmp() { [[ -z "$VSCODE_TMP" ]] || rm -rf "$VSCODE_TMP"; }
+
+fetch_ms_key() { wget -qO- "$MS_KEY_URL" | gpg --dearmor --yes -o "$1"; }
+
+write_vscode_list() {
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=${MS_KEYRING}] ${VSCODE_REPO_URL} stable main" > "$1"
+}
+
+action_vscode_repo() {
+    [[ $# -eq 0 ]] || die_usage "vscode-repo não aceita argumentos."
+    require_root
+    if is_dry_run; then
+        # Pipes e redirecionamentos: impressos como texto, nada é gravado.
+        log "[dry-run] wget -qO- ${MS_KEY_URL} | gpg --dearmor --yes -o <tmp>/packages.microsoft.gpg"
+        log "[dry-run] install -m644 <tmp>/packages.microsoft.gpg ${MS_KEYRING}"
+        log "[dry-run] echo \"deb [arch=\$(dpkg --print-architecture) signed-by=${MS_KEYRING}] ${VSCODE_REPO_URL} stable main\" > <tmp>/vscode.list"
+        log "[dry-run] install -m644 <tmp>/vscode.list ${VSCODE_LIST}"
+        log "[dry-run] rm -f ${APT_STAMP}"
+        return 0
+    fi
+    VSCODE_TMP="$(mktemp -d)"
+    trap cleanup_vscode_tmp EXIT
+    run fetch_ms_key "${VSCODE_TMP}/packages.microsoft.gpg"
+    run write_vscode_list "${VSCODE_TMP}/vscode.list"
+    run install -m644 "${VSCODE_TMP}/packages.microsoft.gpg" "$MS_KEYRING"
+    run install -m644 "${VSCODE_TMP}/vscode.list" "$VSCODE_LIST"
+    rm -f "$APT_STAMP"
+}
+
+action="${1:-}"
+[[ -n "$action" ]] || die_usage "informe uma ação (apt-install, system-tune, docker-group, vscode-repo)."
+shift
+
+case "$action" in
+    apt-install) action_apt_install "$@" ;;
+    system-tune) action_system_tune "$@" ;;
+    docker-group) action_docker_group "$@" ;;
+    vscode-repo) action_vscode_repo "$@" ;;
+    *) die_usage "ação desconhecida: ${action}" ;;
+esac

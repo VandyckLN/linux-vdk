@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 import subprocess
 from collections.abc import Callable
@@ -24,7 +25,7 @@ class StackOption:
 
 EDITORS: list[StackOption] = [
     StackOption("neovim", "Neovim", "Leve, direto no terminal com config limpa"),
-    StackOption("vscode", "VS Code", "Repositorio oficial Microsoft APT"),
+    StackOption("vscode", "VS Code", "Repositório oficial Microsoft APT"),
     StackOption("zed", "Zed Editor", "Editor nativo rápido em Rust"),
     StackOption("cursor", "Cursor", "Instrução/download oficial .deb"),
 ]
@@ -111,6 +112,7 @@ def run_commands(
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                env={**os.environ, "LUMEN_ELEVATE": "pkexec"},
             )
             assert proc.stdout is not None
             for line in proc.stdout:

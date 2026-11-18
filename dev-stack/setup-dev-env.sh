@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=system/lib/elevate.sh
+source "$ROOT_DIR/system/lib/elevate.sh"
+
 INSTALL_CLI=false
 INSTALL_DOTFILES=false
 INSTALL_MISE=false
@@ -60,16 +63,43 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+case "$EDITOR_CHOICE" in
+  ""|neovim|vscode|zed|cursor) ;;
+  *)
+    echo "Editor desconhecido: $EDITOR_CHOICE" >&2
+    exit 1
+    ;;
+esac
+
+# Etapas de root primeiro: assim o polkit pede a senha uma vez só e reaproveita
+# a autorização (cache) nas chamadas seguintes, antes das etapas de usuário.
 if [[ "$INSTALL_CLI" == true ]]; then
   echo "[Dev Stack] Instalando pacotes CLI base..."
   mapfile -t PKGS < <(grep -vE '^\s*(#|$)' "$ROOT_DIR/dev-stack/packages.list")
-  sudo apt-get update
-  sudo apt-get install -y "${PKGS[@]}"
+  as_root apt-install "${PKGS[@]}"
   if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
     mkdir -p "$HOME/.local/bin"
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
   fi
 fi
+
+if [[ "$INSTALL_DOCKER" == true ]]; then
+  echo "[Dev Stack] Instalando Docker..."
+  as_root apt-install docker.io docker-compose-v2
+  as_root docker-group
+fi
+
+case "$EDITOR_CHOICE" in
+  neovim)
+    as_root apt-install neovim
+    ;;
+  vscode)
+    echo "[Dev Stack] Instalando Visual Studio Code via repositório Microsoft APT..."
+    as_root apt-install wget gpg
+    as_root vscode-repo
+    as_root apt-install code
+    ;;
+esac
 
 if [[ "$INSTALL_DOTFILES" == true ]]; then
   echo "[Dev Stack] Aplicando dotfiles (Kitty, Starship, tmux, Neovim)..."
@@ -110,36 +140,13 @@ if [[ "$INSTALL_MISE" == true ]]; then
   fi
 fi
 
-if [[ "$INSTALL_DOCKER" == true ]]; then
-  echo "[Dev Stack] Instalando Docker..."
-  sudo apt-get update
-  sudo apt-get install -y docker.io docker-compose-v2
-  sudo usermod -aG docker "$USER"
-fi
-
 case "$EDITOR_CHOICE" in
-  "") ;;
-  neovim)
-    sudo apt-get install -y neovim
-    ;;
-  vscode)
-    echo "[Dev Stack] Instalando Visual Studio Code via repositório Microsoft APT..."
-    sudo apt-get install -y wget gpg
-    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/packages.microsoft.gpg >/dev/null
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
-    sudo apt-get update
-    sudo apt-get install -y code
-    ;;
   zed)
     echo "[Dev Stack] Instalando Zed Editor..."
     curl -f https://zed.dev/install.sh | sh
     ;;
   cursor)
     echo "[Dev Stack] Baixe o pacote .deb oficial do Cursor em https://cursor.com/downloads"
-    ;;
-  *)
-    echo "Editor desconhecido: $EDITOR_CHOICE" >&2
-    exit 1
     ;;
 esac
 

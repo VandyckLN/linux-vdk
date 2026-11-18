@@ -75,6 +75,12 @@ ISO_PATH="$OUT_DIR/$ISO_NAME"
 CHROOT_DIR="$WORK_DIR/chroot"
 STAGING_DIR="$WORK_DIR/staging"
 DEBS_DIR="$ROOT_DIR/dist/debs"
+# Versão mínima do Mandacaru na ISO: a do lock (o guarda do chroot confere)
+MANDACARU_MIN="$(sed -n 's/^MANDACARU_VERSION=//p' "$ROOT_DIR/packaging/third-party/mandacaru.lock" | tr -d '\r')"
+if [[ -z "$MANDACARU_MIN" ]]; then
+  echo "[erro] MANDACARU_VERSION ausente em packaging/third-party/mandacaru.lock" >&2
+  exit 1
+fi
 
 log() {
   echo "[Linux VDK ISO] $*"
@@ -157,6 +163,16 @@ deb $UBUNTU_MIRROR $UBUNTU_SUITE-security main restricted universe multiverse
 EOF
 
 cp -L /etc/resolv.conf "$CHROOT_DIR/etc/resolv.conf"
+
+# Igual ao Ubuntu Desktop: sem este netplan, o 10-globally-managed-devices.conf
+# do NetworkManager deixa a rede cabeada "unmanaged" (live e sistema instalado).
+install -d -m755 "$CHROOT_DIR/etc/netplan"
+cat > "$CHROOT_DIR/etc/netplan/01-network-manager-all.yaml" <<'EOF'
+network:
+  version: 2
+  renderer: NetworkManager
+EOF
+chmod 600 "$CHROOT_DIR/etc/netplan/01-network-manager-all.yaml"
 mkdir -p "$CHROOT_DIR/mnt/debs"
 mount --bind "$DEBS_DIR" "$CHROOT_DIR/mnt/debs"
 mount --bind /dev "$CHROOT_DIR/dev"
@@ -170,7 +186,7 @@ export DEBIAN_FRONTEND=noninteractive
 echo '$HOSTNAME_LIVE' > /etc/hostname
 apt-get update
 apt-get install -y --no-install-recommends \
-  linux-generic casper discover laptop-detect os-prober \
+  linux-generic linux-headers-generic casper discover laptop-detect os-prober \
   network-manager sudo locales ca-certificates \
   grub-pc-bin grub-efi-amd64-bin shim-signed \
   calamares qml6-module-qtquick-controls
@@ -179,6 +195,16 @@ apt-get install -y --no-install-recommends \
 echo 'deb [trusted=yes] file:/mnt/debs ./' > /etc/apt/sources.list.d/linux-vdk-local.list
 apt-get update
 apt-get install -y lumen-desktop
+# A ISO nunca sai sem o EDR e o aviso: um dist/debs antigo (sem mandacaru) ou um chroot
+# reaproveitado (lumen-desktop "already the newest version") cairiam aqui.
+dpkg -s mandacaru python3-bpfcc linux-headers-generic pipewire mako-notifier libnotify-bin >/dev/null || {
+  echo 'ERRO: o Mandacaru (EDR) ou o aviso sonoro não foi instalado no chroot. Rode ./scripts/package-debs.sh --clean e gere a ISO de novo com --clean.' >&2
+  exit 1
+}
+dpkg --compare-versions \"\$(dpkg-query -W -f='\${Version}' mandacaru)\" ge \"$MANDACARU_MIN\" || {
+  echo 'ERRO: o Mandacaru do chroot é mais velho que o do mandacaru.lock ($MANDACARU_MIN). Gere a ISO de novo com --clean.' >&2
+  exit 1
+}
 rm -f /etc/apt/sources.list.d/linux-vdk-local.list
 
 # Copia configuração do Calamares com branding Linux VDK
@@ -198,9 +224,11 @@ install -Dm644 "$ROOT_DIR/installer/calamares/install-lumen.desktop" \
 chroot "$CHROOT_DIR" /bin/bash -euo pipefail -c "
 # Configura usuário live ($LIVE_USER) sem senha para sessão live
 if ! id -u $LIVE_USER >/dev/null 2>&1; then
-  useradd -m -s /bin/bash -G sudo,video,audio,render $LIVE_USER
+  useradd -m -s /bin/bash -G sudo,video,audio,render,mandacaru $LIVE_USER
   passwd -d $LIVE_USER
 fi
+# chroot reaproveitado: o usuário já existe e o useradd acima não roda
+usermod -aG mandacaru $LIVE_USER
 echo '$LIVE_USER ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/99-$LIVE_USER-live
 chmod 440 /etc/sudoers.d/99-$LIVE_USER-live
 
@@ -214,6 +242,11 @@ chroot "$CHROOT_DIR" dpkg-query -W --showformat='${Package} ${Version}\n' > "$ST
 cp "$STAGING_DIR/casper/filesystem.manifest" "$STAGING_DIR/casper/filesystem.manifest-desktop"
 
 cleanup_mounts
+
+# O resolv.conf do host só servia para o apt dentro do chroot. Se for para a
+# ISO, a sessão live herda o DNS do host (ex.: 10.255.255.254 do WSL) e fica
+# sem resolver nomes; sem ele, o NetworkManager gera o arquivo no boot.
+rm -f "$CHROOT_DIR/etc/resolv.conf"
 
 # 4. Copiar kernel/initrd e compactar rootfs com zstd
 log "Copiando kernel e initrd para staging..."
@@ -230,6 +263,9 @@ printf "%s\n" "$(du -sx --block-size=1 "$CHROOT_DIR" | cut -f1)" > "$STAGING_DIR
 # 5. Bootloader Dual (UEFI + Legacy BIOS) sem depender de loop devices (compatível com WSL2)
 log "Configurando boot dual UEFI e Legacy BIOS..."
 cat > "$STAGING_DIR/boot/grub/grub.cfg" <<EOF
+# O grub-mkstandalone embute este arquivo num memdisk; sem o search, o root
+# fica no (memdisk) e o GRUB não encontra /casper/vmlinuz na mídia.
+search --no-floppy --set=root --file /casper/filesystem.squashfs
 set default="0"
 set timeout=5
 

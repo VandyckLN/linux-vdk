@@ -30,7 +30,7 @@ sudo apt-get install -y \
 > O pipeline `scripts/build-iso.sh` foi desenhado **sem depender de `losetup` / loop devices** (a imagem EFI FAT é montada com `mkfs.vfat` + `mcopy`), funcionando inclusive dentro do WSL2 e containers. Certifique-se apenas de que você tem permissão `sudo` para `debootstrap` e `chroot`.
 
 ### 2. Empacotar os módulos `.deb`
-Gera os 6 pacotes `.deb` (`lumen-shell`, `lumen-compositor`, `lumen-system`, `lumen-dev-stack`, `lumen-welcome` e `lumen-desktop`) e o repositório APT local em `dist/debs/`:
+Gera os 6 pacotes `.deb` (`lumen-shell`, `lumen-compositor`, `lumen-system`, `lumen-dev-stack`, `lumen-welcome` e `lumen-desktop`) e o repositório APT local em `dist/debs/`. O Mandacaru (EDR) entra no mesmo repositório: a `.deb` é baixada da release fixada em `packaging/third-party/mandacaru.lock` e conferida pelo SHA256 (o build para se o hash não conferir; o cache fica em `dist/cache/`):
 
 ```bash
 cd /home/vandyck/projetos/Distro

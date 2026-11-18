@@ -1,0 +1,222 @@
+"""Harness do vigia lumen-edr-notify: socket falso + pw-play/notify-send falsos.
+
+Uso: edr_notify_harness.py <caso> <dir>
+Imprime as chamadas registradas pelos comandos falsos (uma por linha) e, no stderr,
+o que o vigia avisou. O tier 2 confere essa saída.
+"""
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+sys.path.insert(0, REPO)
+
+from shell import edr_notify  # noqa: E402
+
+
+def alerta(sev="HIGH", summary="Shell bash com conexao de rede ativa", **extra):
+    d = {"v": 1, "ts": 1794872689.2, "severity": sev, "rule": "behavior.revshell",
+         "summary": summary, "mitre": ["T1059"]}
+    d.update(extra)
+    return (json.dumps(d, ensure_ascii=False) + "\n").encode()
+
+
+CASOS = {
+    # caso: (linhas enviadas, min_severity)
+    "high": ([alerta()], "MEDIUM"),
+    "medium": ([alerta("MEDIUM")], "MEDIUM"),
+    "low": ([alerta("LOW")], "MEDIUM"),
+    "limiar_high": ([alerta("MEDIUM")], "HIGH"),
+    "cooldown": ([alerta(), alerta()], "MEDIUM"),
+    "lixo": ([b"{quebrado\n", alerta(v=2), alerta("PANICO"), alerta()], "MEDIUM"),
+    "sem_pwplay": ([alerta()], "MEDIUM"),
+    "traco": ([alerta(summary="-x perigo")], "MEDIUM"),
+    "markup": ([alerta(summary="Tom & Jerry <b>x</b>.sh")], "MEDIUM"),
+    "clique": ([alerta()], "MEDIUM"),
+    "pwplay_trava": ([alerta()], "MEDIUM"),
+    "popup_falha": ([alerta()], "MEDIUM"),
+    "zumbi": ([alerta("MEDIUM")], "MEDIUM"),
+}
+
+# Como os falsos se comportam em cada caso. Padrão: o popup fica aberto 3 s (como um
+# HIGH que ninguém fechou) e o pw-play termina na hora.
+#   NOTIFY_SLEEP: segundos até o popup fechar (fechar com 0 = clique ou expirou)
+#   NOTIFY_RC: notify-send falha na hora com esse código (sem daemon de notificação)
+#   PWPLAY_SLEEP: segundos que o pw-play leva (30 = travado, como na VM)
+AMBIENTE = {
+    "clique": {"NOTIFY_SLEEP": "0.1", "PWPLAY_SLEEP": "5"},
+    "pwplay_trava": {"PWPLAY_SLEEP": "30"},
+    "popup_falha": {"NOTIFY_RC": "1"},
+    "zumbi": {"NOTIFY_SLEEP": "0.5"},
+}
+# teto de cada pw-play no harness; no clique ele é alto para provar que quem parou foi o clique
+TETO = {"clique": 5.0}
+ESPERA = {"pwplay_trava": 1.8, "zumbi": 1.5}
+
+
+def fakes(base, com_pwplay=True):
+    bindir = os.path.join(base, "bin")
+    os.makedirs(bindir)
+    log = os.path.join(base, "calls.log")
+    nomes = ["notify-send"] + (["pw-play"] if com_pwplay else [])
+    var = {"notify-send": "NOTIFY", "pw-play": "PWPLAY"}
+    for nome in nomes:
+        p = os.path.join(bindir, nome)
+        with open(p, "w") as fh:
+            fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n'
+                     f'echo $$ >> "{base}/{nome}.pids"\n'
+                     f'[ -n "${var[nome]}_RC" ] && exit "${var[nome]}_RC"\n'
+                     f'exec /bin/sleep "${{{var[nome]}_SLEEP:-0}}"\n')
+        os.chmod(p, 0o755)
+    os.environ["PATH"] = bindir  # so os falsos: um pw-play real do host nao pode atrapalhar
+    return log
+
+
+def servidor(path):
+    if os.path.exists(path):
+        os.unlink(path)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.bind(path)
+    s.listen(1)
+    s.settimeout(5)
+    return s
+
+
+def atender(srv, linhas):
+    conn, _ = srv.accept()
+    for linha in linhas:
+        conn.sendall(linha)
+    return conn
+
+
+def vivos(base, nome):
+    """Quantos processos do falso `nome` ainda estão vivos (zumbi conta como morto)."""
+    try:
+        pids = [int(x) for x in open(os.path.join(base, f"{nome}.pids")).read().split()]
+    except FileNotFoundError:
+        return 0
+    n = 0
+    for pid in pids:
+        try:
+            estado = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            continue
+        n += estado != "Z"
+    return n
+
+
+def zumbis():
+    """Filhos deste processo que terminaram e ninguém recolheu."""
+    n = 0
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        try:
+            campos = open(f"/proc/{d}/stat").read().rsplit(")", 1)[1].split()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        n += campos[0] == "Z" and int(campos[1]) == os.getpid()
+    return n
+
+
+def instancia_unica(base):
+    lock = os.path.join(base, "vigia.lock")
+    segura = edr_notify.acquire_single_instance(lock)
+    tenta = ("import sys; sys.path.insert(0, %r); from shell.edr_notify import acquire_single_instance as a; "
+             "print(a(%r) is not None)") % (REPO, lock)
+    segunda = subprocess.run([sys.executable, "-c", tenta], capture_output=True, text=True).stdout.strip()
+    segura.close()
+    depois = subprocess.run([sys.executable, "-c", tenta], capture_output=True, text=True).stdout.strip()
+    print(f"primeira={segura is not None} segunda={segunda} depois={depois}")
+    return 0
+
+
+def aceita_e_fecha(base):
+    """Produtor no teto de clientes: aceita e fecha na hora. O vigia nao pode girar sem pausa."""
+    path = os.path.join(base, "s.sock")
+    srv = servidor(path)
+    srv.settimeout(0.05)
+    stop = threading.Event()
+    t = threading.Thread(target=edr_notify.run, args=(path, "MEDIUM", True),
+                         kwargs={"stop": stop, "retry_base": 0.1, "retry_max": 0.5})
+    t.start()
+    conexoes = 0
+    fim = time.monotonic() + 1.5
+    while time.monotonic() < fim:
+        try:
+            conn, _ = srv.accept()
+        except socket.timeout:
+            continue
+        conexoes += 1
+        conn.close()
+    stop.set()
+    t.join(5)
+    srv.close()
+    print(f"conexoes={conexoes}")
+    return 0
+
+
+def main():
+    caso, base = sys.argv[1], sys.argv[2]
+    shutil.rmtree(base, ignore_errors=True)
+    os.makedirs(base)
+    if caso == "instancia_unica":
+        return instancia_unica(base)
+    os.environ.update({"NOTIFY_SLEEP": "3", **AMBIENTE.get(caso, {})})
+    edr_notify.SOUND_GAP = 0.05
+    edr_notify.SOUND_MAX = {sev: TETO.get(caso, 0.3) for sev in ("MEDIUM", "HIGH", "CRITICAL")}
+    log = fakes(base, com_pwplay=(caso != "sem_pwplay"))
+    if caso == "aceita_e_fecha":
+        return aceita_e_fecha(base)
+    path = os.path.join(base, "s.sock")
+    srv = servidor(path)
+    stop = threading.Event()
+    min_sev = CASOS.get(caso, ([], "MEDIUM"))[1]
+    t = threading.Thread(target=edr_notify.run, args=(path, min_sev, True),
+                         kwargs={"stop": stop, "retry_base": 0.1, "retry_max": 0.5})
+    t.start()
+
+    if caso in CASOS:
+        conn = atender(srv, CASOS[caso][0])
+    elif caso == "reconecta":
+        atender(srv, []).close()          # Mandacaru reiniciou: conexao cai e o socket some
+        srv.close()
+        time.sleep(0.3)
+        srv = servidor(path)
+        conn = atender(srv, [alerta()])
+    elif caso == "fragmento":
+        primeira = atender(srv, [alerta()[:30]])  # derrubado no meio de um envio
+        primeira.close()
+        srv.close()
+        time.sleep(0.3)
+        srv = servidor(path)
+        conn = atender(srv, [alerta()])
+    else:
+        print(f"caso desconhecido: {caso}", file=sys.stderr)
+        return 2
+
+    time.sleep(ESPERA.get(caso, 0.8))  # tempo para o vigia avisar e os falsos gravarem
+    print(f"pwplay_vivos={vivos(base, 'pw-play')} zumbis={zumbis()}")
+    stop.set()
+    t.join(5)
+    conn.close()
+    srv.close()
+    for p in getattr(edr_notify, "_children", []):
+        if p.poll() is None:
+            p.kill()
+    if t.is_alive():
+        print("o vigia nao parou com o stop", file=sys.stderr)
+        return 3
+    if os.path.exists(log):
+        with open(log) as fh:
+            sys.stdout.write(fh.read())
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

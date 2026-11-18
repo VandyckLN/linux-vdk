@@ -187,5 +187,28 @@ else
 fi
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F7: Elevação de Privilégios
+# ==============================================================================
+
+test_case_start "T4_SCENARIO6_PACOTES_COM_HELPER_E_POLICY" "Pacote lumen-system traz helper, elevate.sh, lista e policy; lumen-welcome não traz policy"
+if command -v dpkg-deb >/dev/null 2>&1; then
+    debs_dir="${SANDBOX_DIR}/debs"
+    build_out="$(bash "${WORKSPACE_ROOT}/packaging/build-debs.sh" "$debs_dir" 2>&1)"
+    build_status=$?
+    assert_eq 0 "$build_status" "build-debs.sh deve concluir com sucesso -> ${build_out}"
+    system_listing="$(dpkg-deb -c "$debs_dir"/lumen-system_*.deb 2>&1)"
+    welcome_listing="$(dpkg-deb -c "$debs_dir"/lumen-welcome_*.deb 2>&1)"
+    helper_lines="$(grep -cE -- '^-rwxr-xr-x .* \./usr/bin/lumen-root-helper$' <<< "$system_listing")"
+    assert_eq 1 "$helper_lines" "O helper deve ser instalado em /usr/bin com modo 0755 (uma única cópia)"
+    assert_contains "$system_listing" "\./usr/share/lumen-os/system/lib/elevate\.sh" "O pacote deve trazer o elevate.sh"
+    assert_contains "$system_listing" "\./usr/share/lumen-os/system/root-helper/allowed-packages\.list" "O pacote deve trazer a lista de pacotes permitidos"
+    assert_contains "$system_listing" "\./usr/share/polkit-1/actions/dev\.lumenos\.root-helper\.policy" "O pacote deve trazer a policy do polkit"
+    assert_not_contains "$welcome_listing" "polkit-1/actions" "O lumen-welcome não deve trazer policy do polkit"
+else
+    test_case_skip "dpkg-deb não está disponível"
+fi
+test_case_end
+
 # Finaliza a suíte
 suite_finish

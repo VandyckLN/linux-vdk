@@ -8,17 +8,17 @@
   <vendor_url>https://lumenos.dev</vendor_url>
   <icon_name>dev.lumenos.welcome</icon_name>
 
-  <action id="dev.lumenos.welcome.policy">
-    <description>Apply Lumen OS system optimizations</description>
-    <description xml:lang="pt_BR">Aplicar otimizações de sistema do Lumen OS</description>
-    <message>Authentication is required to configure system settings and package pinning</message>
-    <message xml:lang="pt_BR">Autenticação necessária para configurar ajustes de sistema e pinning de pacotes</message>
+  <action id="dev.lumenos.root-helper">
+    <description>Executar tarefas administrativas do Linux VDK</description>
+    <description xml:lang="en">Run administrative tasks for Linux VDK</description>
+    <message>É preciso autenticar para instalar pacotes e aplicar ajustes de sistema</message>
+    <message xml:lang="en">Authentication is required to install packages and apply system settings</message>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/lumen-system-tune</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/lumen-root-helper</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Vigia do Mandacaru (EDR): som e popup dos alertas na sessão do usuário
+export PYTHONPATH="/usr/share/lumen-os:${PYTHONPATH:-}"
+
+exec /usr/bin/python3 -m shell.edr_notify "$@"

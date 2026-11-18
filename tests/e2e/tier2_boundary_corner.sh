@@ -383,5 +383,495 @@ else
 fi
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F7: Elevação de Privilégios
+# ==============================================================================
+helper="${WORKSPACE_ROOT}/system/lumen-root-helper"
+
+# T2-F7-01
+test_case_start "T2_F7_01" "Helper recusa ação desconhecida"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" formatar-disco
+assert_contains "$LAST_CMD_OUTPUT" "ação desconhecida: formatar-disco" "A recusa deve citar a ação desconhecida"
+test_case_end
+
+# T2-F7-02
+test_case_start "T2_F7_02" "Helper recusa pacote fora da lista permitida"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install nmap
+assert_contains "$LAST_CMD_OUTPUT" "pacote não permitido: nmap" "A recusa deve ser por pacote fora da lista"
+test_case_end
+
+# T2-F7-03
+test_case_start "T2_F7_03" "Helper recusa nomes de pacote maliciosos"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install -oAPT::X=1
+assert_contains "$LAST_CMD_OUTPUT" "nome de pacote inválido" "A recusa deve ser por nome inválido"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install 'vim;rm -rf /'
+assert_contains "$LAST_CMD_OUTPUT" "nome de pacote inválido" "A recusa deve ser por nome inválido"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install '../etc'
+assert_contains "$LAST_CMD_OUTPUT" "nome de pacote inválido" "A recusa deve ser por nome inválido"
+test_case_end
+
+# T2-F7-04
+test_case_start "T2_F7_04" "Helper recusa apt-install sem pacotes"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install
+assert_contains "$LAST_CMD_OUTPUT" "apt-install exige ao menos um pacote" "A recusa deve ser por falta de pacotes"
+test_case_end
+
+# T2-F7-05
+test_case_start "T2_F7_05" "Ação válida sem root e sem dry-run sai com 3"
+if [[ "$EUID" -eq 0 ]]; then
+    test_case_skip "a suíte está rodando como root"
+else
+    assert_exit_code 3 env -u LUMEN_ROOT_HELPER_DRY_RUN "$helper" apt-install git
+fi
+test_case_end
+
+# T2-F7-06
+test_case_start "T2_F7_06" "Dry-run de apt-install mostra update e install"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" apt-install git jq
+assert_contains "$LAST_CMD_OUTPUT" "apt-get -o DPkg::Lock::Timeout=120 update" "O dry-run deve mostrar o apt-get update com timeout do lock"
+assert_contains "$LAST_CMD_OUTPUT" "apt-get -o DPkg::Lock::Timeout=120 install -y -- git jq" "O dry-run deve mostrar o apt-get install"
+test_case_end
+
+# T2-F7-07: lista com CRLF e espaços nas pontas
+test_case_start "T2_F7_07" "Lista permitida com CRLF e espaços continua reconhecida"
+rh_dir="${SANDBOX_DIR}/rh"
+mkdir -p "${rh_dir}/root-helper"
+cp "$helper" "${rh_dir}/lumen-root-helper"
+printf '# comentário\r\n\r\n  git \r\n' > "${rh_dir}/root-helper/allowed-packages.list"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "${rh_dir}/lumen-root-helper" apt-install git
+test_case_end
+
+# T2-F7-08: ambiente vazio, como no pkexec
+test_case_start "T2_F7_08" "Helper funciona com ambiente vazio, como no pkexec"
+assert_exit_code 0 env -i LUMEN_ROOT_HELPER_DRY_RUN=1 /bin/bash -c 'cd / && exec /bin/bash "$1" apt-install git' _ "$helper"
+test_case_end
+
+# T2-F7-09
+test_case_start "T2_F7_09" "Dry-run de system-tune --no-snap instala os 3 arquivos de configuração"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune --no-snap
+assert_contains "$LAST_CMD_OUTPUT" "/etc/sysctl.d/99-lumen-dev.conf" "Deve instalar o sysctl"
+assert_contains "$LAST_CMD_OUTPUT" "/etc/systemd/zram-generator.conf" "Deve instalar o zram"
+assert_contains "$LAST_CMD_OUTPUT" "/etc/apt/preferences.d/99-no-snap" "Deve instalar o pin do snap"
+assert_contains "$LAST_CMD_OUTPUT" "${WORKSPACE_ROOT}/system/" "As origens devem vir do diretório system/ do repo"
+test_case_end
+
+# T2-F7-10
+test_case_start "T2_F7_10" "system-tune sem --no-snap não aplica o pin do snap"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune
+assert_not_contains "$LAST_CMD_OUTPUT" "99-no-snap" "Sem --no-snap não pode tocar no pin do snap"
+test_case_end
+
+# T2-F7-11
+test_case_start "T2_F7_11" "system-tune recusa argumento desconhecido"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" system-tune --forcar
+assert_contains "$LAST_CMD_OUTPUT" "argumento inválido para system-tune: --forcar" "A recusa deve citar o argumento inválido"
+test_case_end
+
+# T2-F7-12
+test_case_start "T2_F7_12" "docker-group recusa quando não há usuário chamador"
+assert_exit_code 2 env -u SUDO_USER -u PKEXEC_UID LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "não foi possível identificar o usuário chamador" "A recusa deve ser por falta de usuário chamador"
+test_case_end
+
+# T2-F7-13
+test_case_start "T2_F7_13" "docker-group recusa root e usuários de sistema"
+assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=0 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 0 é de root ou de sistema" "A recusa deve ser por UID de sistema"
+assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=1 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 1 é de root ou de sistema" "A recusa deve ser por UID de sistema"
+assert_exit_code 2 env -u PKEXEC_UID SUDO_USER=root LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 0 é de root ou de sistema" "A recusa deve ser por UID de sistema"
+test_case_end
+
+# T2-F7-14
+test_case_start "T2_F7_14" "docker-group usa o usuário do PKEXEC_UID"
+if [[ "$(id -u)" -lt 1000 ]]; then
+    test_case_skip "o UID atual é menor que 1000"
+else
+    assert_exit_code 0 env -u SUDO_USER PKEXEC_UID="$(id -u)" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "usermod -aG docker -- $(id -un)" "Deve adicionar o usuário do PKEXEC_UID ao grupo docker"
+fi
+test_case_end
+
+# T2-F7-15
+test_case_start "T2_F7_15" "docker-group recusa argumentos extras"
+fixed_uid="$(getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 { print $3; exit }')"
+fixed_name=""
+[[ -n "$fixed_uid" ]] && fixed_name="$(getent passwd "$fixed_uid" | cut -d: -f1)"
+if [[ -z "$fixed_uid" ]]; then
+    test_case_skip "não há usuário com UID entre 1000 e 65533"
+else
+    assert_exit_code 2 env -u SUDO_USER PKEXEC_UID="$fixed_uid" LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group root
+    assert_contains "$LAST_CMD_OUTPUT" "docker-group não aceita argumentos" "A recusa deve vir do argumento extra"
+fi
+test_case_end
+
+# T2-F7-16
+test_case_start "T2_F7_16" "vscode-repo usa apenas URLs fixas e não aceita argumentos"
+assert_exit_code 0 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo
+assert_contains "$LAST_CMD_OUTPUT" "https://packages.microsoft.com/keys/microsoft.asc" "Deve usar a URL fixa da chave"
+assert_contains "$LAST_CMD_OUTPUT" "/etc/apt/sources.list.d/vscode.list" "Deve gravar o vscode.list"
+assert_exit_code 2 env LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" vscode-repo https://exemplo.invalido
+assert_contains "$LAST_CMD_OUTPUT" "vscode-repo não aceita argumentos" "A recusa deve vir do argumento extra"
+test_case_end
+
+# T2-F7-23
+test_case_start "T2_F7_23" "docker-group prefere PKEXEC_UID ao SUDO_USER"
+if [[ -z "$fixed_uid" ]]; then
+    test_case_skip "não há usuário com UID entre 1000 e 65533"
+else
+    assert_exit_code 0 env PKEXEC_UID="$fixed_uid" SUDO_USER=root LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "usermod -aG docker -- ${fixed_name}" "Deve usar o usuário do PKEXEC_UID, não o SUDO_USER"
+fi
+test_case_end
+
+# T2-F7-24
+test_case_start "T2_F7_24" "docker-group recusa PKEXEC_UID não numérico ou inexistente"
+assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=abc LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+assert_contains "$LAST_CMD_OUTPUT" "PKEXEC_UID inválido" "A recusa deve ser por UID não numérico"
+if getent passwd 59999 >/dev/null; then
+    test_case_skip "o UID 59999 existe nesta máquina"
+else
+    assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=59999 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "usuário chamador não encontrado" "A recusa deve ser por UID inexistente"
+fi
+test_case_end
+
+# T2-F7-25
+test_case_start "T2_F7_25" "docker-group recusa UID 65534 (nobody)"
+if ! getent passwd 65534 >/dev/null; then
+    test_case_skip "o UID 65534 não existe nesta máquina"
+else
+    assert_exit_code 2 env -u SUDO_USER PKEXEC_UID=65534 LUMEN_ROOT_HELPER_DRY_RUN=1 "$helper" docker-group
+    assert_contains "$LAST_CMD_OUTPUT" "recusado: UID 65534 é reservado \\(nobody e afins; máximo 65533\\)" "A recusa deve ser pelo teto de UID"
+fi
+test_case_end
+
+# T2-F7-26
+test_case_start "T2_F7_26" "Helper cria arquivos com umask 022 mesmo com umask 077 do chamador"
+assert_exit_code 0 bash -c 'umask 077; LUMEN_ROOT_HELPER_DRY_RUN=1 exec "$1" vscode-repo' _ "$helper"
+assert_contains "$LAST_CMD_OUTPUT" "install -m644 [^ ]+ /usr/share/keyrings/packages.microsoft.gpg" "O keyring deve ser instalado com modo explícito 644"
+assert_contains "$LAST_CMD_OUTPUT" "install -m644 [^ ]+ /etc/apt/sources.list.d/vscode.list" "O vscode.list deve ser instalado com modo explícito 644"
+test_case_end
+
+# Mocks de sudo/pkexec para o as_root: ficam na frente do PATH e registram a chamada
+elevate="${WORKSPACE_ROOT}/system/lib/elevate.sh"
+elev_bin="${SANDBOX_DIR}/elev_bin"
+elev_calls="${SANDBOX_DIR}/elev.calls"
+mkdir -p "$elev_bin"
+for fake in sudo pkexec; do
+    cat > "${elev_bin}/${fake}" <<'FAKE'
+#!/bin/bash
+echo "$(basename "$0") $*" >> "${ELEV_CALLS}"
+exit "${MOCK_EXIT:-0}"
+FAKE
+    chmod +x "${elev_bin}/${fake}"
+done
+printf '#!/bin/bash\nexit 0\n' > "${SANDBOX_DIR}/fake-installed-helper"
+chmod +x "${SANDBOX_DIR}/fake-installed-helper"
+
+# T2-F7-17
+test_case_start "T2_F7_17" "as_root usa sudo no terminal"
+: > "$elev_calls"
+assert_exit_code 0 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" LUMEN_ROOT_HELPER_BIN=/caminho/inexistente \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$(cat "$elev_calls")" "sudo " "Deve chamar o sudo"
+assert_contains "$(cat "$elev_calls")" "system/lumen-root-helper apt-install git" "Deve usar o helper do repo"
+test_case_end
+
+# T2-F7-18
+test_case_start "T2_F7_18" "as_root usa pkexec com o helper instalado quando LUMEN_ELEVATE=pkexec"
+: > "$elev_calls"
+assert_exit_code 0 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" LUMEN_ELEVATE=pkexec \
+    LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$(cat "$elev_calls")" "pkexec ${SANDBOX_DIR}/fake-installed-helper apt-install git" "Deve chamar o pkexec com o helper instalado"
+assert_not_contains "$(cat "$elev_calls")" "sudo" "Não pode cair no sudo"
+test_case_end
+
+# T2-F7-19
+test_case_start "T2_F7_19" "as_root com pkexec e helper não instalado falha com mensagem clara"
+: > "$elev_calls"
+output=$(env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" LUMEN_ELEVATE=pkexec LUMEN_ROOT_HELPER_BIN=/caminho/inexistente \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate" 2>&1) && status=0 || status=$?
+assert_ne "0" "$status" "Deve falhar"
+assert_contains "$output" "O pkexec precisa do lumen-root-helper instalado" "Deve explicar que falta o helper"
+assert_eq "" "$(cat "$elev_calls")" "Não pode chamar pkexec nem sudo"
+test_case_end
+
+# T2-F7-20
+test_case_start "T2_F7_20" "as_root traduz o cancelamento do pkexec"
+: > "$elev_calls"
+assert_exit_code 126 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=126 LUMEN_ELEVATE=pkexec \
+    LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$LAST_CMD_OUTPUT" "Autenticação cancelada. Nada foi alterado." "Deve traduzir o 126"
+test_case_end
+
+# T2-F7-21
+test_case_start "T2_F7_21" "as_root traduz falta de autorização do pkexec"
+: > "$elev_calls"
+assert_exit_code 127 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=127 LUMEN_ELEVATE=pkexec \
+    LUMEN_ROOT_HELPER_BIN="${SANDBOX_DIR}/fake-installed-helper" \
+    bash -c 'source "$1"; as_root apt-install git' _ "$elevate"
+assert_contains "$LAST_CMD_OUTPUT" "Autenticação cancelada ou negada. Nada foi alterado." "Deve traduzir o 127 (o hyprpolkitagent devolve 127 ao cancelar)"
+test_case_end
+
+# T2-F7-22
+test_case_start "T2_F7_22" "Falha do helper é propagada e aborta o script chamador"
+: > "$elev_calls"
+assert_exit_code 2 env PATH="${elev_bin}:${PATH}" ELEV_CALLS="$elev_calls" MOCK_EXIT=2 LUMEN_ROOT_HELPER_BIN=/caminho/inexistente \
+    bash -c 'set -e; source "$1"; as_root apt-install git; echo CONTINUOU' _ "$elevate"
+assert_not_contains "$LAST_CMD_OUTPUT" "CONTINUOU" "O chamador com set -e deve abortar"
+test_case_end
+
+# ==============================================================================
+# FUNCIONALIDADE F8: Download do Mandacaru (sem rede: URLs file://)
+# ==============================================================================
+fetch="${WORKSPACE_ROOT}/packaging/fetch-third-party.sh"
+fx="${SANDBOX_DIR}/fetch"
+mkdir -p "$fx"
+printf 'deb falso do mandacaru\n' > "$fx/origem.deb"
+fx_sha="$(sha256sum "$fx/origem.deb" | awk '{print $1}')"
+fx_zero="$(printf '0%.0s' {1..64})"
+write_lock() {  # write_lock <arquivo> <url> <sha>
+    printf 'MANDACARU_VERSION=0.2.0\nMANDACARU_URL=%s\nMANDACARU_SHA256=%s\n' "$2" "$3" > "$1"
+}
+reset_fx() { rm -rf "$fx/cache" "$fx/out" "$fx/executou"; }
+run_fetch() {  # run_fetch <código-esperado> <lock> <saída> [VAR=valor...]
+    local esperado="$1" lock_file="$2" saida="$3"
+    shift 3
+    assert_exit_code "$esperado" env MANDACARU_LOCK="$lock_file" LUMEN_CACHE_DIR="$fx/cache" "$@" "$fetch" "$saida"
+}
+deb_final="mandacaru_0.2.0_all.deb"
+
+# T2-F8-01
+test_case_start "T2_F8_01" "Hash certo copia a .deb para a saída e para o cache"
+reset_fx
+write_lock "$fx/ok.lock" "file://$fx/origem.deb" "$fx_sha"
+run_fetch 0 "$fx/ok.lock" "$fx/out"
+assert_file_exists "$fx/out/$deb_final"
+assert_file_exists "$fx/cache/$deb_final"
+assert_exit_code 0 cmp "$fx/origem.deb" "$fx/out/$deb_final"
+test_case_end
+
+# T2-F8-02
+test_case_start "T2_F8_02" "Hash errado falha e não deixa arquivo para trás"
+reset_fx
+write_lock "$fx/errado.lock" "file://$fx/origem.deb" "$fx_zero"
+run_fetch 1 "$fx/errado.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "checksum do mandacaru não confere: esperado ${fx_zero}, obtido ${fx_sha}" "A mensagem deve citar os dois hashes"
+assert_file_not_exists "$fx/out/$deb_final"
+assert_file_not_exists "$fx/cache/$deb_final"
+assert_file_not_exists "$fx/cache/${deb_final}.part"
+test_case_end
+
+# T2-F8-03
+test_case_start "T2_F8_03" "Cache válido é reaproveitado sem baixar"
+reset_fx
+mkdir -p "$fx/cache"
+cp "$fx/origem.deb" "$fx/cache/$deb_final"
+write_lock "$fx/sem-origem.lock" "file://$fx/nao-existe.deb" "$fx_sha"
+run_fetch 0 "$fx/sem-origem.lock" "$fx/out"
+assert_file_exists "$fx/out/$deb_final"
+test_case_end
+
+# T2-F8-04
+test_case_start "T2_F8_04" "Sem origem e sem cache, o download falha com mensagem clara"
+reset_fx
+run_fetch 1 "$fx/sem-origem.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "não foi possível baixar o mandacaru de file://$fx/nao-existe.deb" "A mensagem deve citar a URL"
+test_case_end
+
+# T2-F8-05
+test_case_start "T2_F8_05" "Cache corrompido é baixado de novo e substituído"
+reset_fx
+mkdir -p "$fx/cache"
+printf 'lixo\n' > "$fx/cache/$deb_final"
+run_fetch 0 "$fx/ok.lock" "$fx/out"
+assert_exit_code 0 cmp "$fx/origem.deb" "$fx/cache/$deb_final"
+test_case_end
+
+# T2-F8-06
+test_case_start "T2_F8_06" "Um .part que sobrou não conta como cache"
+reset_fx
+mkdir -p "$fx/cache"
+printf 'lixo\n' > "$fx/cache/${deb_final}.part"
+run_fetch 1 "$fx/sem-origem.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "não foi possível baixar" "O .part não pode ser usado como cache"
+test_case_end
+
+# T2-F8-07
+test_case_start "T2_F8_07" ".lock com fim de linha CRLF funciona"
+reset_fx
+write_lock "$fx/crlf.lock" "file://$fx/origem.deb" "$fx_sha"
+sed -i 's/$/\r/' "$fx/crlf.lock"
+run_fetch 0 "$fx/crlf.lock" "$fx/out"
+assert_file_exists "$fx/out/$deb_final"
+test_case_end
+
+# T2-F8-08
+test_case_start "T2_F8_08" ".lock é lido como dado e nunca executado"
+reset_fx
+write_lock "$fx/inject.lock" "file://$fx/origem.deb" "$fx_sha"
+printf 'MANDACARU_EXTRA=$(touch %s/executou)\n' "$fx" >> "$fx/inject.lock"
+run_fetch 0 "$fx/inject.lock" "$fx/out"
+assert_file_not_exists "$fx/executou"
+test_case_end
+
+# T2-F8-09
+test_case_start "T2_F8_09" "Diretório de saída inexistente é criado"
+reset_fx
+run_fetch 0 "$fx/ok.lock" "$fx/out/nova/pasta"
+assert_file_exists "$fx/out/nova/pasta/$deb_final"
+test_case_end
+
+# T2-F8-10
+test_case_start "T2_F8_10" ".lock sem SHA256 falha dizendo a chave"
+reset_fx
+printf 'MANDACARU_VERSION=0.2.0\nMANDACARU_URL=file://%s/origem.deb\n' "$fx" > "$fx/sem-sha.lock"
+run_fetch 1 "$fx/sem-sha.lock" "$fx/out"
+assert_contains "$LAST_CMD_OUTPUT" "chave ausente no mandacaru.lock: MANDACARU_SHA256" "A mensagem deve citar a chave"
+test_case_end
+
+# T2-F8-11
+test_case_start "T2_F8_11" "SHA256 do ambiente tem precedência sobre o .lock"
+reset_fx
+run_fetch 0 "$fx/errado.lock" "$fx/out" MANDACARU_SHA256="$fx_sha"
+assert_file_exists "$fx/out/$deb_final"
+test_case_end
+
+# ==============================================================================
+# FUNCIONALIDADE F9: Vigia do Mandacaru (lumen-edr-notify)
+# Socket falso + pw-play/notify-send falsos que só registram as chamadas.
+# ==============================================================================
+edr_harness="${WORKSPACE_ROOT}/tests/e2e/fixtures/edr_notify_harness.py"
+edr_dir="${SANDBOX_DIR}/edr"
+run_edr() {  # run_edr <caso>: roda o harness e deixa a saída em LAST_CMD_OUTPUT
+    assert_exit_code 0 python3 "$edr_harness" "$1" "$edr_dir"
+}
+conta() {  # conta <padrão>: quantas linhas de LAST_CMD_OUTPUT casam
+    grep -cE -- "$1" <<<"$LAST_CMD_OUTPUT" || true
+}
+som_alarme="pw-play /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed\.oga"
+som_aviso="pw-play /usr/share/sounds/freedesktop/stereo/dialog-warning\.oga"
+
+# T2-F9-01
+test_case_start "T2_F9_01" "Alerta HIGH gera popup crítico e o som de alarme"
+run_edr high
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
+assert_contains "$LAST_CMD_OUTPUT" "$som_alarme" "Som de alarme no HIGH"
+assert_not_contains "$LAST_CMD_OUTPUT" "expire-time" "HIGH fica na tela até ser fechado"
+test_case_end
+
+# T2-F9-02
+test_case_start "T2_F9_02" "Alerta MEDIUM gera popup normal e o som de aviso"
+run_edr medium
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal --expire-time=10000 --wait --action=default=Silenciar -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
+assert_contains "$LAST_CMD_OUTPUT" "$som_aviso" "Som de aviso no MEDIUM"
+test_case_end
+
+# T2-F9-03
+test_case_start "T2_F9_03" "Alerta LOW não gera nada com o limiar padrão MEDIUM"
+run_edr low
+assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "LOW fica quieto"
+test_case_end
+
+# T2-F9-04
+test_case_start "T2_F9_04" "Com limiar HIGH, o MEDIUM não gera nada"
+run_edr limiar_high
+assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "MEDIUM abaixo do limiar HIGH"
+test_case_end
+
+# T2-F9-05
+test_case_start "T2_F9_05" "Dois HIGH seguidos: 2 popups e um toque só, sem sobrepor"
+run_edr cooldown
+assert_eq "2" "$(conta '^notify-send ')" "Os popups saem todos"
+assert_eq "3" "$(conta '^pw-play ')" "Só o toque do primeiro (3 vezes); o segundo não sobrepõe"
+test_case_end
+
+# T2-F9-06
+test_case_start "T2_F9_06" "JSON quebrado, v diferente de 1 e severidade desconhecida são ignorados"
+run_edr lixo
+assert_eq "1" "$(conta '^notify-send ')" "Só o alerta válido vira popup"
+assert_contains "$LAST_CMD_OUTPUT" "Mandacaru: HIGH" "O alerta válido depois do lixo ainda é avisado"
+test_case_end
+
+# T2-F9-07
+test_case_start "T2_F9_07" "Mandacaru reinicia: o vigia reconecta e avisa o próximo alerta"
+run_edr reconecta
+assert_eq "1" "$(conta '^notify-send ')" "Alerta depois da reconexão"
+test_case_end
+
+# T2-F9-08
+test_case_start "T2_F9_08" "Sem pw-play, o popup sai mesmo assim e o vigia avisa"
+run_edr sem_pwplay
+assert_eq "1" "$(conta '^notify-send ')" "Popup sem o som"
+assert_contains "$LAST_CMD_OUTPUT" "\[edr-notify\].*pw-play" "Aviso da falta do pw-play"
+test_case_end
+
+# T2-F9-09
+test_case_start "T2_F9_09" "Resumo começando com traço não vira opção do notify-send"
+run_edr traco
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
+test_case_end
+
+# T2-F9-10
+test_case_start "T2_F9_10" "Linha incompleta no fim da conexão é descartada"
+run_edr fragmento
+assert_eq "1" "$(conta '^notify-send ')" "Só o alerta completo da segunda conexão"
+test_case_end
+
+# T2-F9-11
+test_case_start "T2_F9_11" "Produtor que aceita e fecha na hora não faz o vigia girar sem pausa"
+run_edr aceita_e_fecha
+n="$(sed -n 's/^conexoes=//p' <<<"$LAST_CMD_OUTPUT")"
+assert_eq "0" "$(( ${n:-99999} > 15 ))" "No máximo 15 conexões em 1,5 s com backoff (obtido: ${n:-nada})"
+test_case_end
+
+# T2-F9-12
+test_case_start "T2_F9_12" "Só um vigia por sessão: o segundo não pega a trava"
+run_edr instancia_unica
+assert_contains "$LAST_CMD_OUTPUT" "primeira=True segunda=False depois=True" "Trava de instância única"
+test_case_end
+
+# T2-F9-13
+test_case_start "T2_F9_13" "Markup no resumo é escapado antes de ir para o popup"
+run_edr markup
+assert_contains "$LAST_CMD_OUTPUT" "behavior\.revshell: Tom &amp; Jerry &lt;b&gt;x&lt;/b&gt;\.sh" "Corpo do popup sem markup interpretável"
+test_case_end
+
+# T2-F9-14
+test_case_start "T2_F9_14" "O som de uma ocorrência repete 3 vezes e para"
+run_edr high
+assert_eq "3" "$(conta "^$som_alarme")" "3 toques do alarme para um HIGH"
+test_case_end
+
+# T2-F9-15
+test_case_start "T2_F9_15" "Clique no popup para o som na hora, mesmo no meio de um toque"
+run_edr clique
+assert_eq "1" "$(conta '^pw-play ')" "Nenhum toque depois do clique"
+assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=0 " "O pw-play que tocava foi parado"
+test_case_end
+
+# T2-F9-16
+test_case_start "T2_F9_16" "pw-play travado é parado pelo teto e o toque não passa de 3"
+run_edr pwplay_trava
+assert_eq "3" "$(conta '^pw-play ')" "3 toques, cada um cortado pelo teto"
+assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=0 " "Nenhum pw-play fica tocando para sempre"
+test_case_end
+
+# T2-F9-17
+test_case_start "T2_F9_17" "Sem daemon de notificação (notify-send falha), o som toca as 3 vezes"
+run_edr popup_falha
+assert_eq "3" "$(conta '^pw-play ')" "Falha do popup não é confundida com clique"
+test_case_end
+
+# T2-F9-18
+test_case_start "T2_F9_18" "Processos filhos que terminam são recolhidos (sem zumbis)"
+run_edr zumbi
+assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=[0-9]+ zumbis=0" "Nenhum pw-play ou notify-send zumbi"
+test_case_end
+
 # Finaliza a suíte
 suite_finish
