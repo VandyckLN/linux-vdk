@@ -307,8 +307,12 @@ need("lumen-compositor", "hyprpolkitagent")
 # a janela de senha (o pacote do Ubuntu não declara essa dependência).
 need("lumen-compositor", "qt6-wayland")
 # Mandacaru (EDR) com eBPF vem por padrão no desktop.
-need("lumen-desktop", "mandacaru (>= 0.2.0)")
+need("lumen-desktop", "mandacaru (>= 0.3.0)")
 need("lumen-desktop", "python3-bpfcc")
+# Aviso sonoro e popup dos alertas do Mandacaru: áudio, notificação e tema de sons.
+for dep in ("pipewire", "pipewire-pulse", "wireplumber", "mako-notifier", "libnotify-bin",
+            "sound-theme-freedesktop"):
+    need("lumen-desktop", dep)
 
 if errors:
     print("\n".join(errors))
@@ -355,6 +359,46 @@ print("ok" if inst != -1 and chk and chk.start() > inst else "falta a checagem d
 PYEOF
 )"
 assert_eq "ok" "$edr_out" "A ISO nunca pode sair sem o Mandacaru"
+test_case_end
+
+# T3-PAIR9: vigia do Mandacaru na sessão, no pacote e na ISO
+test_case_start "T3_PAIR9_SESSAO_SOBE_VIGIA" "Os dois hyprland.conf sobem o mako e o vigia do Mandacaru"
+for conf in "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf"; do
+    assert_contains "$conf" "^exec-once = mako$" "mako sobe na sessão ($conf)"
+done
+assert_contains "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "^exec-once = /usr/bin/lumen-edr-notify$" "Vigia instalado sobe na sessão"
+assert_contains "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf" "^exec-once = python3 -m shell\.edr_notify$" "Vigia de desenvolvimento sobe na sessão"
+test_case_end
+
+test_case_start "T3_PAIR9_PACOTE_INSTALA_VIGIA" "build-debs.sh instala o lumen-edr-notify em /usr/bin no lumen-shell"
+vig_out="$(python3 -I - "${WORKSPACE_ROOT}/packaging/build-debs.sh" <<'PYEOF' 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+ini = src.find("lumen-shell)")
+fim = src.find(";;", ini)
+bloco = src[ini:fim] if ini != -1 else ""
+alvo = 'cp "$WORKSPACE_ROOT/packaging/templates/lumen-edr-notify" "$stage_dir/usr/bin/lumen-edr-notify"'
+print("ok" if alvo in bloco else "o bloco do lumen-shell não copia o lumen-edr-notify")
+PYEOF
+)"
+assert_eq "ok" "$vig_out" "O pacote lumen-shell leva o lançador do vigia"
+test_case_end
+
+test_case_start "T3_PAIR9_GRUPO_MANDACARU" "Usuário da live e usuário instalado entram no grupo mandacaru"
+assert_contains "${WORKSPACE_ROOT}/scripts/build-iso.sh" "useradd -m -s /bin/bash -G sudo,video,audio,render,mandacaru " "Live no grupo mandacaru"
+assert_contains "${WORKSPACE_ROOT}/installer/calamares/modules/users.conf" "^ *- mandacaru$" "Calamares põe o usuário no grupo mandacaru"
+test_case_end
+
+test_case_start "T3_PAIR9_GRUPO_DEPOIS_DO_EDR" "O useradd da live vem depois do install do lumen-desktop (que cria o grupo)"
+ord_out="$(python3 -I - "${WORKSPACE_ROOT}/scripts/build-iso.sh" <<'PYEOF' 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+inst = src.find("apt-get install -y lumen-desktop")
+add = src.find("useradd -m -s /bin/bash -G sudo,video,audio,render,mandacaru")
+print("ok" if inst != -1 and add > inst else "o useradd com mandacaru precisa vir depois do apt-get install -y lumen-desktop")
+PYEOF
+)"
+assert_eq "ok" "$ord_out" "Sem o grupo criado, o useradd falharia"
 test_case_end
 
 # Finaliza a suíte

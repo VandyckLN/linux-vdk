@@ -213,7 +213,7 @@ install -Dm644 "$ROOT_DIR/installer/calamares/install-lumen.desktop" \
 chroot "$CHROOT_DIR" /bin/bash -euo pipefail -c "
 # Configura usuário live ($LIVE_USER) sem senha para sessão live
 if ! id -u $LIVE_USER >/dev/null 2>&1; then
-  useradd -m -s /bin/bash -G sudo,video,audio,render $LIVE_USER
+  useradd -m -s /bin/bash -G sudo,video,audio,render,mandacaru $LIVE_USER
   passwd -d $LIVE_USER
 fi
 echo '$LIVE_USER ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/99-$LIVE_USER-live

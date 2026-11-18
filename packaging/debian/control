@@ -117,8 +117,14 @@ Depends: ${misc:Depends},
          lumen-system (= 1.0.0-1ubuntu1) | distro-system,
          lumen-dev-stack (= 1.0.0-1ubuntu1) | distro-dev-stack,
          lumen-welcome (= 1.0.0-1ubuntu1) | distro-welcome,
-         mandacaru (>= 0.2.0),
-         python3-bpfcc
+         mandacaru (>= 0.3.0),
+         python3-bpfcc,
+         pipewire,
+         pipewire-pulse,
+         wireplumber,
+         mako-notifier,
+         libnotify-bin,
+         sound-theme-freedesktop
 Recommends: greetd | sddm | gdm3
 Description: Metapacote do ambiente de desktop completo do Lumen OS
  Metapacote completo que reúne todos os componentes do Lumen OS:

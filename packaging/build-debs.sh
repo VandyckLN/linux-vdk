@@ -60,6 +60,7 @@ stage_package() {
             cp "$WORKSPACE_ROOT/config/shell.default.json" "$stage_dir/usr/share/lumen-os/config/shell.default.json"
             cp "$WORKSPACE_ROOT/config/shell.default.json" "$stage_dir/etc/lumen/shell.default.json"
             cp "$WORKSPACE_ROOT/packaging/templates/lumen-shell" "$stage_dir/usr/bin/lumen-shell"
+            cp "$WORKSPACE_ROOT/packaging/templates/lumen-edr-notify" "$stage_dir/usr/bin/lumen-edr-notify"
             cp "$WORKSPACE_ROOT/packaging/templates/lumen-shell.desktop" "$stage_dir/usr/share/applications/lumen-shell.desktop"
 
             cat <<EOF > "$stage_dir/DEBIAN/control"
@@ -251,7 +252,7 @@ Priority: optional
 Architecture: all
 Maintainer: Lumen OS Developers <contact@lumenos.dev>
 Provides: distro-desktop
-Depends: lumen-shell (= $VERSION) | distro-shell, lumen-compositor (= $VERSION) | distro-compositor, lumen-system (= $VERSION) | distro-system, lumen-dev-stack (= $VERSION) | distro-dev-stack, lumen-welcome (= $VERSION) | distro-welcome, mandacaru (>= 0.2.0), python3-bpfcc
+Depends: lumen-shell (= $VERSION) | distro-shell, lumen-compositor (= $VERSION) | distro-compositor, lumen-system (= $VERSION) | distro-system, lumen-dev-stack (= $VERSION) | distro-dev-stack, lumen-welcome (= $VERSION) | distro-welcome, mandacaru (>= 0.3.0), python3-bpfcc, pipewire, pipewire-pulse, wireplumber, mako-notifier, libnotify-bin, sound-theme-freedesktop
 Recommends: greetd | sddm | gdm3
 Description: Metapacote do ambiente de desktop completo do Lumen OS
  Metapacote completo que reúne todos os componentes do Lumen OS:
