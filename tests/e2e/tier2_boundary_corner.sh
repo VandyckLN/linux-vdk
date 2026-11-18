@@ -263,6 +263,18 @@ else
 fi
 test_case_end
 
+# T2-F4-06: Checksum conferido de dentro do dist/
+test_case_start "T2_F4_06" "O CI confere o .sha256 de dentro do dist/, onde está a ISO que ele cita"
+if [[ -f "$workflow_file" ]]; then
+    # o build-iso.sh grava o .sha256 com o nome puro da ISO (roda "sha256sum \$ISO_NAME" no dist/)
+    assert_contains "${WORKSPACE_ROOT}/scripts/build-iso.sh" 'sha256sum "\$ISO_NAME" > "\$\{ISO_NAME\}\.sha256"' "O .sha256 cita só o nome da ISO"
+    assert_contains "$workflow_file" "cd dist && sha256sum -c linux-vdk-26\.04-amd64\.iso\.sha256" "O CI entra no dist/ antes do sha256sum -c"
+    assert_not_contains "$workflow_file" "sha256sum -c dist/" "Conferir da raiz falha: a ISO citada não está lá"
+else
+    test_case_skip ".github/workflows/build-iso.yml ainda não existe"
+fi
+test_case_end
+
 
 # ==============================================================================
 # FUNCIONALIDADE F5: Casos de Limite do Script e Executor de Testes QEMU (5 testes)

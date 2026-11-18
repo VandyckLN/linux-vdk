@@ -74,7 +74,7 @@ jobs:
       - name: Verificar ISO e dry-run do QEMU
         run: |
           ls -lh dist/
-          sha256sum -c dist/linux-vdk-26.04-amd64.iso.sha256
+          (cd dist && sha256sum -c linux-vdk-26.04-amd64.iso.sha256)
           ./scripts/test-iso-qemu.sh --dry-run --uefi
           ./scripts/test-iso-qemu.sh --dry-run --bios
 
