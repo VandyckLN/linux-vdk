@@ -125,7 +125,7 @@ def notify(alert: dict, sound_enabled: bool) -> None:
     body = html.escape(f"{alert['rule']}: {alert['summary']}", quote=False)
     # --wait com ação padrão: o notify-send só termina quando o popup fecha (clique ou
     # expirou), e é isso que para o som. "--": um resumo começando com "-" não vira opção.
-    popup = _spawn(["notify-send", "--app-name=Mandacaru", *opts, "--wait",
+    popup = _spawn(["notify-send", "--app-name=Mandacaru", "--icon=mandacaru", *opts, "--wait",
                     "--action=default=Silenciar", "--", f"Mandacaru: {sev}", body])
     if sound_enabled and sev in SOUNDS and not _ringing.is_set():
         _ringing.set()

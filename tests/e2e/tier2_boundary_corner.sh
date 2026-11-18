@@ -771,7 +771,7 @@ som_aviso="pw-play /usr/share/sounds/freedesktop/stereo/dialog-warning\.oga"
 # T2-F9-01
 test_case_start "T2_F9_01" "Alerta HIGH gera popup crítico e o som de alarme"
 run_edr high
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
 assert_contains "$LAST_CMD_OUTPUT" "$som_alarme" "Som de alarme no HIGH"
 assert_not_contains "$LAST_CMD_OUTPUT" "expire-time" "HIGH fica na tela até ser fechado"
 test_case_end
@@ -779,7 +779,7 @@ test_case_end
 # T2-F9-02
 test_case_start "T2_F9_02" "Alerta MEDIUM gera popup normal e o som de aviso"
 run_edr medium
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal --expire-time=10000 --wait --action=default=Silenciar -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=normal --expire-time=10000 --wait --action=default=Silenciar -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
 assert_contains "$LAST_CMD_OUTPUT" "$som_aviso" "Som de aviso no MEDIUM"
 test_case_end
 
@@ -825,7 +825,7 @@ test_case_end
 # T2-F9-09
 test_case_start "T2_F9_09" "Resumo começando com traço não vira opção do notify-send"
 run_edr traco
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
 test_case_end
 
 # T2-F9-10
