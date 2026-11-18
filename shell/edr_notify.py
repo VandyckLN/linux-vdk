@@ -7,7 +7,10 @@ Roda na sessão Hyprland via `exec-once = /usr/bin/lumen-edr-notify`.
 
 from __future__ import annotations
 
+import fcntl
+import html
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -18,6 +21,8 @@ from typing import Any
 SEVERITIES = ("INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL")
 SOUND_COOLDOWN = 5.0
 MAX_LINE = 64 * 1024
+MEDIUM_EXPIRE_MS = 10000  # MEDIUM some sozinho; HIGH/CRITICAL ficam até a pessoa fechar
+HEALTHY_CONNECTION = 5.0  # conexão que durou isso (ou trouxe dados) zera o backoff
 DEFAULT_SOCKET = "/run/mandacaru/alerts.sock"
 DEFAULT_MIN_SEVERITY = "MEDIUM"
 SOUNDS = {
@@ -76,10 +81,15 @@ def notify(alert: dict, sound_enabled: bool, now: float) -> None:
     if sound_enabled and sev in SOUNDS and (_last_sound is None or now - _last_sound >= SOUND_COOLDOWN):
         _last_sound = now
         _spawn(["pw-play", SOUNDS[sev]])
-    urgency = "critical" if sev in ("HIGH", "CRITICAL") else "normal"
+    if sev in ("HIGH", "CRITICAL"):
+        opts = ["--urgency=critical"]
+    else:
+        opts = ["--urgency=normal", f"--expire-time={MEDIUM_EXPIRE_MS}"]
+    # o corpo do popup é markup Pango no mako: um "&" ou "<b>" num nome de arquivo
+    # quebraria ou forjaria o texto
+    body = html.escape(f"{alert['rule']}: {alert['summary']}", quote=False)
     # "--": um resumo começando com "-" não pode virar opção do notify-send
-    _spawn(["notify-send", "--app-name=Mandacaru", f"--urgency={urgency}", "--",
-            f"Mandacaru: {sev}", f"{alert['rule']}: {alert['summary']}"])
+    _spawn(["notify-send", "--app-name=Mandacaru", *opts, "--", f"Mandacaru: {sev}", body])
 
 
 def load_settings(data: dict[str, Any]) -> tuple[str, str, bool]:
@@ -95,7 +105,22 @@ def load_settings(data: dict[str, Any]) -> tuple[str, str, bool]:
     return sock, sev, sound if isinstance(sound, bool) else True
 
 
-def _read_alerts(conn: socket.socket, stop: threading.Event):
+def acquire_single_instance(path: str):
+    """Trava de um vigia por usuário. Devolve o arquivo (mantenha aberto) ou None se já há outro.
+
+    Sem isso, sair e entrar de novo no Hyprland deixa o vigia antigo vivo (ele não depende
+    do Wayland) e cada alerta vira N popups e N sons.
+    """
+    fh = open(path, "a")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    return fh
+
+
+def _read_alerts(conn: socket.socket, stop: threading.Event, got_data: list[bool]):
     """Gera as linhas completas da conexão até o EOF. Fragmento sem \\n no fim é descartado."""
     buf = b""
     conn.settimeout(0.5)  # para o stop ser visto mesmo sem alertas chegando
@@ -108,6 +133,7 @@ def _read_alerts(conn: socket.socket, stop: threading.Event):
             return
         if not chunk:
             return
+        got_data[0] = True
         buf += chunk
         *lines, buf = buf.split(b"\n")
         yield from lines
@@ -138,20 +164,33 @@ def run(socket_path: str, min_severity: str, sound_enabled: bool, stop: threadin
             wait = min(wait * 2, retry_max)
             continue
         waiting = False
-        wait = retry_base
         _warned.discard("perm")
+        got_data = [False]
+        started = time.monotonic()
         try:
-            for line in _read_alerts(conn, stop):
+            for line in _read_alerts(conn, stop, got_data):
                 alert = parse_alert(line)
                 if alert and should_notify(alert, min_severity):
                     notify(alert, sound_enabled, time.monotonic())
         finally:
             conn.close()
+        if got_data[0] or time.monotonic() - started >= HEALTHY_CONNECTION:
+            wait = retry_base
+        else:
+            # aceitou e fechou na hora (produtor no teto de clientes): sem pausa,
+            # o vigia giraria a ~1 núcleo de CPU
+            stop.wait(wait)
+            wait = min(wait * 2, retry_max)
 
 
 def main() -> int:
     from .config_store import ConfigStore
 
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    lock = acquire_single_instance(os.path.join(runtime, "lumen-edr-notify.lock"))
+    if lock is None:
+        print("[edr-notify] já existe um vigia rodando para este usuário", file=sys.stderr, flush=True)
+        return 0
     sock, sev, sound = load_settings(ConfigStore().data)
     try:
         run(sock, sev, sound)

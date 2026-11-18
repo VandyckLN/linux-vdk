@@ -401,5 +401,43 @@ PYEOF
 assert_eq "ok" "$ord_out" "Sem o grupo criado, o useradd falharia"
 test_case_end
 
+test_case_start "T3_PAIR9_GUARDA_VERSAO_E_AVISO" "O guarda do chroot exige o Mandacaru do lock e os pacotes do aviso"
+# Chroot reaproveitado (sem --clean) responde "already the newest version" ao lumen-desktop
+# e deixaria a ISO com o Mandacaru velho e sem PipeWire/mako, em silêncio.
+guard_out="$(python3 -I - "${WORKSPACE_ROOT}/scripts/build-iso.sh" <<'PYEOF' 2>&1
+import re
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+erros = []
+if not re.search(r"MANDACARU_MIN=.*mandacaru\.lock", src):
+    erros.append("MANDACARU_MIN nao vem do mandacaru.lock")
+inst = src.find("apt-get install -y lumen-desktop")
+cmp_ = src.find("dpkg --compare-versions")
+if cmp_ == -1 or cmp_ < inst or "$MANDACARU_MIN" not in src[cmp_:cmp_ + 200]:
+    erros.append("falta dpkg --compare-versions contra $MANDACARU_MIN depois do install")
+m = re.search(r"dpkg -s ([^>|]+)>/dev/null", src)
+pkgs = set(m.group(1).split()) if m else set()
+falta = {"mandacaru", "python3-bpfcc", "linux-headers-generic", "pipewire", "mako-notifier", "libnotify-bin"} - pkgs
+if falta:
+    erros.append("dpkg -s sem: " + " ".join(sorted(falta)))
+print("ok" if not erros else "; ".join(erros))
+PYEOF
+)"
+assert_eq "ok" "$guard_out" "ISO nunca sai com o EDR velho ou sem o aviso"
+test_case_end
+
+test_case_start "T3_PAIR9_USERMOD_FORA_DO_IF" "A live entra no grupo mandacaru mesmo com usuário já existente"
+um_out="$(python3 -I - "${WORKSPACE_ROOT}/scripts/build-iso.sh" <<'PYEOF' 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+ini = src.find("if ! id -u $LIVE_USER")
+fim = src.find("\nfi\n", ini)
+um = src.find("usermod -aG mandacaru $LIVE_USER")
+print("ok" if ini != -1 and fim != -1 and um > fim else "falta usermod -aG mandacaru $LIVE_USER depois do bloco do useradd")
+PYEOF
+)"
+assert_eq "ok" "$um_out" "Chroot reaproveitado também põe a live no grupo"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -35,6 +36,7 @@ CASOS = {
     "lixo": ([b"{quebrado\n", alerta(v=2), alerta("PANICO"), alerta()], "MEDIUM"),
     "sem_pwplay": ([alerta()], "MEDIUM"),
     "traco": ([alerta(summary="-x perigo")], "MEDIUM"),
+    "markup": ([alerta(summary="Tom & Jerry <b>x</b>.sh")], "MEDIUM"),
 }
 
 
@@ -69,11 +71,52 @@ def atender(srv, linhas):
     return conn
 
 
+def instancia_unica(base):
+    lock = os.path.join(base, "vigia.lock")
+    segura = edr_notify.acquire_single_instance(lock)
+    tenta = ("import sys; sys.path.insert(0, %r); from shell.edr_notify import acquire_single_instance as a; "
+             "print(a(%r) is not None)") % (REPO, lock)
+    segunda = subprocess.run([sys.executable, "-c", tenta], capture_output=True, text=True).stdout.strip()
+    segura.close()
+    depois = subprocess.run([sys.executable, "-c", tenta], capture_output=True, text=True).stdout.strip()
+    print(f"primeira={segura is not None} segunda={segunda} depois={depois}")
+    return 0
+
+
+def aceita_e_fecha(base):
+    """Produtor no teto de clientes: aceita e fecha na hora. O vigia nao pode girar sem pausa."""
+    path = os.path.join(base, "s.sock")
+    srv = servidor(path)
+    srv.settimeout(0.05)
+    stop = threading.Event()
+    t = threading.Thread(target=edr_notify.run, args=(path, "MEDIUM", True),
+                         kwargs={"stop": stop, "retry_base": 0.1, "retry_max": 0.5})
+    t.start()
+    conexoes = 0
+    fim = time.monotonic() + 1.5
+    while time.monotonic() < fim:
+        try:
+            conn, _ = srv.accept()
+        except socket.timeout:
+            continue
+        conexoes += 1
+        conn.close()
+    stop.set()
+    t.join(5)
+    srv.close()
+    print(f"conexoes={conexoes}")
+    return 0
+
+
 def main():
     caso, base = sys.argv[1], sys.argv[2]
     shutil.rmtree(base, ignore_errors=True)
     os.makedirs(base)
+    if caso == "instancia_unica":
+        return instancia_unica(base)
     log = fakes(base, com_pwplay=(caso != "sem_pwplay"))
+    if caso == "aceita_e_fecha":
+        return aceita_e_fecha(base)
     path = os.path.join(base, "s.sock")
     srv = servidor(path)
     stop = threading.Event()

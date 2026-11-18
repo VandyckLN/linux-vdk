@@ -75,6 +75,12 @@ ISO_PATH="$OUT_DIR/$ISO_NAME"
 CHROOT_DIR="$WORK_DIR/chroot"
 STAGING_DIR="$WORK_DIR/staging"
 DEBS_DIR="$ROOT_DIR/dist/debs"
+# Versão mínima do Mandacaru na ISO: a do lock (o guarda do chroot confere)
+MANDACARU_MIN="$(sed -n 's/^MANDACARU_VERSION=//p' "$ROOT_DIR/packaging/third-party/mandacaru.lock" | tr -d '\r')"
+if [[ -z "$MANDACARU_MIN" ]]; then
+  echo "[erro] MANDACARU_VERSION ausente em packaging/third-party/mandacaru.lock" >&2
+  exit 1
+fi
 
 log() {
   echo "[Linux VDK ISO] $*"
@@ -189,9 +195,14 @@ apt-get install -y --no-install-recommends \
 echo 'deb [trusted=yes] file:/mnt/debs ./' > /etc/apt/sources.list.d/linux-vdk-local.list
 apt-get update
 apt-get install -y lumen-desktop
-# A ISO nunca sai sem o EDR: um dist/debs antigo (sem mandacaru) cairia aqui.
-dpkg -s mandacaru python3-bpfcc linux-headers-generic >/dev/null || {
-  echo 'ERRO: o Mandacaru (EDR) não foi instalado no chroot. Rode ./scripts/package-debs.sh --clean e gere a ISO de novo.' >&2
+# A ISO nunca sai sem o EDR e o aviso: um dist/debs antigo (sem mandacaru) ou um chroot
+# reaproveitado (lumen-desktop "already the newest version") cairiam aqui.
+dpkg -s mandacaru python3-bpfcc linux-headers-generic pipewire mako-notifier libnotify-bin >/dev/null || {
+  echo 'ERRO: o Mandacaru (EDR) ou o aviso sonoro não foi instalado no chroot. Rode ./scripts/package-debs.sh --clean e gere a ISO de novo com --clean.' >&2
+  exit 1
+}
+dpkg --compare-versions \"\$(dpkg-query -W -f='\${Version}' mandacaru)\" ge \"$MANDACARU_MIN\" || {
+  echo 'ERRO: o Mandacaru do chroot é mais velho que o do mandacaru.lock ($MANDACARU_MIN). Gere a ISO de novo com --clean.' >&2
   exit 1
 }
 rm -f /etc/apt/sources.list.d/linux-vdk-local.list
@@ -216,6 +227,8 @@ if ! id -u $LIVE_USER >/dev/null 2>&1; then
   useradd -m -s /bin/bash -G sudo,video,audio,render,mandacaru $LIVE_USER
   passwd -d $LIVE_USER
 fi
+# chroot reaproveitado: o usuário já existe e o useradd acima não roda
+usermod -aG mandacaru $LIVE_USER
 echo '$LIVE_USER ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/99-$LIVE_USER-live
 chmod 440 /etc/sudoers.d/99-$LIVE_USER-live
 

@@ -761,12 +761,13 @@ test_case_start "T2_F9_01" "Alerta HIGH gera popup crítico e o som de alarme"
 run_edr high
 assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
 assert_contains "$LAST_CMD_OUTPUT" "$som_alarme" "Som de alarme no HIGH"
+assert_not_contains "$LAST_CMD_OUTPUT" "expire-time" "HIGH fica na tela até ser fechado"
 test_case_end
 
 # T2-F9-02
 test_case_start "T2_F9_02" "Alerta MEDIUM gera popup normal e o som de aviso"
 run_edr medium
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal -- Mandacaru: MEDIUM" "Popup normal do MEDIUM"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal --expire-time=10000 -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
 assert_contains "$LAST_CMD_OUTPUT" "$som_aviso" "Som de aviso no MEDIUM"
 test_case_end
 
@@ -819,6 +820,25 @@ test_case_end
 test_case_start "T2_F9_10" "Linha incompleta no fim da conexão é descartada"
 run_edr fragmento
 assert_eq "1" "$(conta '^notify-send ')" "Só o alerta completo da segunda conexão"
+test_case_end
+
+# T2-F9-11
+test_case_start "T2_F9_11" "Produtor que aceita e fecha na hora não faz o vigia girar sem pausa"
+run_edr aceita_e_fecha
+n="$(sed -n 's/^conexoes=//p' <<<"$LAST_CMD_OUTPUT")"
+assert_eq "0" "$(( ${n:-99999} > 15 ))" "No máximo 15 conexões em 1,5 s com backoff (obtido: ${n:-nada})"
+test_case_end
+
+# T2-F9-12
+test_case_start "T2_F9_12" "Só um vigia por sessão: o segundo não pega a trava"
+run_edr instancia_unica
+assert_contains "$LAST_CMD_OUTPUT" "primeira=True segunda=False depois=True" "Trava de instância única"
+test_case_end
+
+# T2-F9-13
+test_case_start "T2_F9_13" "Markup no resumo é escapado antes de ir para o popup"
+run_edr markup
+assert_contains "$LAST_CMD_OUTPUT" "behavior\.revshell: Tom &amp; Jerry &lt;b&gt;x&lt;/b&gt;\.sh" "Corpo do popup sem markup interpretável"
 test_case_end
 
 # Finaliza a suíte
