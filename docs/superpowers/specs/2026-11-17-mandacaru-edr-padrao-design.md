@@ -125,6 +125,17 @@ Testes E2E novos, todos sem rede (usam `MANDACARU_URL=file://...` com um arquivo
 
 **Critério de pronto:** suíte E2E 100% aprovada e o teste manual na VM aprovado.
 
+### Resultado do teste manual (2026-11-18)
+
+Feito com a ISO do aviso sonoro (Mandacaru 0.3.0), na VM de 6 GB.
+
+| Item | Resultado |
+|---|---|
+| 1. Serviço ativo no boot | Aprovado: `systemctl is-active mandacaru` responde `active` sem nenhuma ação. |
+| 2. Coletor eBPF | Aprovado: o journal mostra `processos: eBPF (kernel)`, sem fallback para psutil. Do start do serviço até o eBPF pronto levou 13 s. |
+| 3. Alerta no `alerts.jsonl` | Aprovado: os 5 alertas do teste (MEDIUM, HIGH ×3 e o EICAR LOW) estão em `/var/log/mandacaru/alerts.jsonl`. |
+| Custo na sessão live | O serviço usa ~232 MiB (`MemoryCurrent`). Com o Hyprland aberto, o sistema inteiro fica em ~950 MiB de 5,8 GiB. |
+
 ## 9. Riscos
 
 - **Sem atualização no sistema instalado:** como não existe repositório APT online, o Mandacaru instalado só muda com uma nova ISO ou instalação manual. Mitigação futura: repositório APT próprio (a abordagem C).

@@ -137,6 +137,21 @@ Testes E2E nos tiers que já existem, sem rede e sem root:
 
 **Critério de pronto:** suíte E2E 100% verde e teste manual na VM aprovado.
 
+### Resultado do teste manual (2026-11-18)
+
+ISO `linux-vdk-26.04-amd64.iso` (SHA256 `20f60019…5901196`), VirtualBox com HDA, Hyprland iniciado no tty com `LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=kms_swrast lumen-session-hyprland` (a VM não tem 3D).
+
+| Item | Resultado |
+|---|---|
+| 1. Socket e grupo | Aprovado: `srw-rw---- root mandacaru /run/mandacaru/alerts.sock`; `id` mostra `105(mandacaru)` no `lumen`. |
+| 2. Processos na sessão | Aprovado: `mako`, `python3 -m shell.edr_notify`, `pipewire`, `wireplumber` e `pipewire-pulse` rodando. |
+| 3. MEDIUM | Aprovado: popup `Mandacaru: MEDIUM` com `behavior.exec_from_temp: Executavel rodando de pasta temporaria: /tmp/x` e `pw-play .../dialog-warning.oga`. |
+| 4. HIGH | Na primeira rodada **reprovado**: popup crítico certo, mas o `pw-play` não terminava no fim do arquivo (6,1 s) e o alarme tocava sem parar. Corrigido no commit `fb4fd29` (até 3 toques, teto por `pw-play`, parada no clique). Na segunda rodada, aprovado: 3 toques, nenhum `pw-play` sobrando e o popup na tela até ser fechado. |
+| 4b. Clique no popup | Aprovado: `makoctl invoke` (o mesmo que o clique esquerdo) 2 s depois do alarme começar parou o som em menos de 0,4 s, com 1 toque só, e fechou o popup. |
+| 5. EICAR | Aprovado: `[LOW] yara.EICAR_Test_File` no journal, sem som e sem popup. |
+
+A ISO não tem display manager nem autologin: a live para no `login:` do tty e o Hyprland precisa ser iniciado à mão. Isso já era assim antes desta spec e fica fora do escopo dela.
+
 ## 7. Riscos
 
 - **Tamanho da ISO:** o PipeWire, o WirePlumber e o mako somam algo como 15 a 25 MB instalados. Isso é pouco perto do BCC.
