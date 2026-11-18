@@ -582,5 +582,37 @@ assert_syntax_valid "${WORKSPACE_ROOT}/packaging/fetch-third-party.sh" "sh"
 assert_contains "${WORKSPACE_ROOT}/packaging/fetch-third-party.sh" "set -euo pipefail" "Modo estrito obrigatório"
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F10: Vigia do Mandacaru (lumen-edr-notify)
+# ==============================================================================
+
+# T1-F10-01
+test_case_start "T1_F10_01" "Lançador lumen-edr-notify é executável e chama o módulo do vigia"
+launcher="${WORKSPACE_ROOT}/packaging/templates/lumen-edr-notify"
+assert_file_executable "$launcher"
+assert_syntax_valid "$launcher" "sh"
+assert_contains "$launcher" "exec /usr/bin/python3 -m shell\.edr_notify" "Chama python3 -m shell.edr_notify"
+test_case_end
+
+# T1-F10-02
+test_case_start "T1_F10_02" "shell.default.json traz a seção edr com os padrões da spec"
+assert_exit_code 0 python3 -c '
+import json, sys
+e = json.load(open(sys.argv[1]))["edr"]
+assert e == {"socket": "/run/mandacaru/alerts.sock", "notify_min_severity": "MEDIUM", "sound": True}, e
+' "${WORKSPACE_ROOT}/config/shell.default.json"
+test_case_end
+
+# T1-F10-03
+test_case_start "T1_F10_03" "Severidade inválida na config cai para MEDIUM"
+assert_exit_code 0 python3 -c '
+import sys
+sys.path.insert(0, sys.argv[1])
+from shell.edr_notify import load_settings
+sock, sev, som = load_settings({"edr": {"notify_min_severity": "pânico"}})
+assert (sock, sev, som) == ("/run/mandacaru/alerts.sock", "MEDIUM", True), (sock, sev, som)
+' "${WORKSPACE_ROOT}"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

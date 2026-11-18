@@ -741,5 +741,85 @@ run_fetch 0 "$fx/errado.lock" "$fx/out" MANDACARU_SHA256="$fx_sha"
 assert_file_exists "$fx/out/$deb_final"
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F9: Vigia do Mandacaru (lumen-edr-notify)
+# Socket falso + pw-play/notify-send falsos que só registram as chamadas.
+# ==============================================================================
+edr_harness="${WORKSPACE_ROOT}/tests/e2e/fixtures/edr_notify_harness.py"
+edr_dir="${SANDBOX_DIR}/edr"
+run_edr() {  # run_edr <caso>: roda o harness e deixa a saída em LAST_CMD_OUTPUT
+    assert_exit_code 0 python3 "$edr_harness" "$1" "$edr_dir"
+}
+conta() {  # conta <padrão>: quantas linhas de LAST_CMD_OUTPUT casam
+    grep -cE -- "$1" <<<"$LAST_CMD_OUTPUT" || true
+}
+som_alarme="pw-play /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed\.oga"
+som_aviso="pw-play /usr/share/sounds/freedesktop/stereo/dialog-warning\.oga"
+
+# T2-F9-01
+test_case_start "T2_F9_01" "Alerta HIGH gera popup crítico e o som de alarme"
+run_edr high
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
+assert_contains "$LAST_CMD_OUTPUT" "$som_alarme" "Som de alarme no HIGH"
+test_case_end
+
+# T2-F9-02
+test_case_start "T2_F9_02" "Alerta MEDIUM gera popup normal e o som de aviso"
+run_edr medium
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal -- Mandacaru: MEDIUM" "Popup normal do MEDIUM"
+assert_contains "$LAST_CMD_OUTPUT" "$som_aviso" "Som de aviso no MEDIUM"
+test_case_end
+
+# T2-F9-03
+test_case_start "T2_F9_03" "Alerta LOW não gera nada com o limiar padrão MEDIUM"
+run_edr low
+assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "LOW fica quieto"
+test_case_end
+
+# T2-F9-04
+test_case_start "T2_F9_04" "Com limiar HIGH, o MEDIUM não gera nada"
+run_edr limiar_high
+assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "MEDIUM abaixo do limiar HIGH"
+test_case_end
+
+# T2-F9-05
+test_case_start "T2_F9_05" "Dois HIGH seguidos: 2 popups e 1 som (cooldown de 5 s)"
+run_edr cooldown
+assert_eq "2" "$(conta '^notify-send ')" "Os popups saem todos"
+assert_eq "1" "$(conta '^pw-play ')" "No máximo 1 som a cada 5 s"
+test_case_end
+
+# T2-F9-06
+test_case_start "T2_F9_06" "JSON quebrado, v diferente de 1 e severidade desconhecida são ignorados"
+run_edr lixo
+assert_eq "1" "$(conta '^notify-send ')" "Só o alerta válido vira popup"
+assert_contains "$LAST_CMD_OUTPUT" "Mandacaru: HIGH" "O alerta válido depois do lixo ainda é avisado"
+test_case_end
+
+# T2-F9-07
+test_case_start "T2_F9_07" "Mandacaru reinicia: o vigia reconecta e avisa o próximo alerta"
+run_edr reconecta
+assert_eq "1" "$(conta '^notify-send ')" "Alerta depois da reconexão"
+test_case_end
+
+# T2-F9-08
+test_case_start "T2_F9_08" "Sem pw-play, o popup sai mesmo assim e o vigia avisa"
+run_edr sem_pwplay
+assert_eq "1" "$(conta '^notify-send ')" "Popup sem o som"
+assert_contains "$LAST_CMD_OUTPUT" "\[edr-notify\].*pw-play" "Aviso da falta do pw-play"
+test_case_end
+
+# T2-F9-09
+test_case_start "T2_F9_09" "Resumo começando com traço não vira opção do notify-send"
+run_edr traco
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
+test_case_end
+
+# T2-F9-10
+test_case_start "T2_F9_10" "Linha incompleta no fim da conexão é descartada"
+run_edr fragmento
+assert_eq "1" "$(conta '^notify-send ')" "Só o alerta completo da segunda conexão"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

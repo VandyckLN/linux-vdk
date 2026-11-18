@@ -14,6 +14,11 @@
     "blur_enabled": true,
     "exclusive_zone": true
   },
+  "edr": {
+    "socket": "/run/mandacaru/alerts.sock",
+    "notify_min_severity": "MEDIUM",
+    "sound": true
+  },
   "terminal_cmd": "kitty",
   "editor_cmd": "code",
   "browser_cmd": "xdg-open https://localhost",
