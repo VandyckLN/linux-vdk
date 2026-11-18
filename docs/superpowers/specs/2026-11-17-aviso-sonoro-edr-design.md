@@ -77,7 +77,7 @@ O `pw-play` vem do `pipewire-bin`, que é dependência do `pipewire`.
 
 ### 3.5 Mandacaru 0.3.0 no build
 
-`packaging/third-party/mandacaru.lock` passa para `MANDACARU_VERSION=0.3.0`, com a URL e o SHA256 da `.deb` da release `v0.3.0`. Isso só é possível depois que o autor publicar a release. O checksum é conferido baixando a `.deb` publicada.
+`packaging/third-party/mandacaru.lock` passa para `MANDACARU_VERSION=0.3.0`, com a URL `https://github.com/VandyckLN/mandacaru/releases/download/v0.3.0/mandacaru_0.3.0_all.deb` e o SHA256 `408d8a56e38d1b0c455d32c30455d777184ce1d9b5c02f6b2e2086f32acaa402` da `.deb` da release `v0.3.0`, publicada em 2026-11-18 e conferida baixando a `.deb`.
 
 ## 4. Fluxo
 
@@ -94,6 +94,7 @@ O `pw-play` vem do `pipewire-bin`, que é dependência do `pipewire`.
 | Conexão cai (o Mandacaru reiniciou) | Volta ao laço de reconexão. |
 | Linha inválida (JSON quebrado, `v` diferente de 1, campo faltando, severidade desconhecida) | Ignorada em silêncio. |
 | Linha maior que 64 KiB sem `\n` | O buffer é descartado e a leitura segue a partir da próxima linha. |
+| Conexão termina com uma linha incompleta (o Mandacaru derrubou o vigia no meio de um envio) | O fragmento sem `\n` é descartado, e o vigia volta ao laço de reconexão. |
 | `pw-play` ou `notify-send` ausente ou falhando | Um aviso no stderr na primeira falha de cada um. O outro canal continua funcionando. |
 | Rajada de alertas | No máximo 1 som a cada 5 s. Os popups saem todos (o Mandacaru já descarta repetidos em 30 s). |
 
@@ -120,13 +121,14 @@ Testes E2E nos tiers que já existem, sem rede e sem root:
 **Teste manual na VM**, com a ISO nova:
 1. `ls -l /run/mandacaru/alerts.sock` mostra `srw-rw---- root mandacaru`, e `id` mostra o usuário da live no grupo `mandacaru`.
 2. `pgrep -a mako` e `pgrep -af edr_notify` mostram os dois rodando na sessão.
-3. Um alerta HIGH forçado (um executável copiado para o `/tmp` e executado de lá) gera o popup vermelho e o alarme no áudio da VM.
+3. Um alerta **MEDIUM** (`cp /usr/bin/true /tmp/x && /tmp/x`, que dispara a regra `behavior.exec_from_temp`) gera o popup normal e o som `dialog-warning`.
+4. Um alerta **HIGH** (`ln -s /usr/bin/python3 ~/node && ~/node -c 'import subprocess; subprocess.run(["bash", "-c", "true"])'`, que dispara a regra `behavior.service_spawned_shell`, porque o Mandacaru trata `node` como serviço) gera o popup crítico, que fica na tela, e o som `alarm-clock-elapsed`.
+5. O EICAR gera um alerta **LOW** e por isso **não** deve avisar, porque o limiar padrão é MEDIUM.
 
 **Critério de pronto:** suíte E2E 100% verde e teste manual na VM aprovado.
 
 ## 7. Riscos
 
-- **Ordem de entrega:** esta spec só fecha depois que a v0.3.0 do Mandacaru estiver publicada, por causa do lock. Até lá, dá para implementar e testar tudo com o socket falso, deixando o lock para o fim.
 - **Tamanho da ISO:** o PipeWire, o WirePlumber e o mako somam algo como 15 a 25 MB instalados. Isso é pouco perto do BCC.
 - **Áudio na VM:** o VirtualBox precisa de uma placa de som habilitada (ICH AC97 ou HDA) para o teste manual ouvir o alarme. O popup pode ser validado sem áudio.
 - **Sessão sem `systemd --user`:** se o Hyprland for iniciado fora do logind, o PipeWire não sobe e só o som falha. O popup continua saindo.
