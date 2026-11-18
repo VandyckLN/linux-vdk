@@ -37,7 +37,26 @@ CASOS = {
     "sem_pwplay": ([alerta()], "MEDIUM"),
     "traco": ([alerta(summary="-x perigo")], "MEDIUM"),
     "markup": ([alerta(summary="Tom & Jerry <b>x</b>.sh")], "MEDIUM"),
+    "clique": ([alerta()], "MEDIUM"),
+    "pwplay_trava": ([alerta()], "MEDIUM"),
+    "popup_falha": ([alerta()], "MEDIUM"),
+    "zumbi": ([alerta("MEDIUM")], "MEDIUM"),
 }
+
+# Como os falsos se comportam em cada caso. Padrão: o popup fica aberto 3 s (como um
+# HIGH que ninguém fechou) e o pw-play termina na hora.
+#   NOTIFY_SLEEP: segundos até o popup fechar (fechar com 0 = clique ou expirou)
+#   NOTIFY_RC: notify-send falha na hora com esse código (sem daemon de notificação)
+#   PWPLAY_SLEEP: segundos que o pw-play leva (30 = travado, como na VM)
+AMBIENTE = {
+    "clique": {"NOTIFY_SLEEP": "0.1", "PWPLAY_SLEEP": "5"},
+    "pwplay_trava": {"PWPLAY_SLEEP": "30"},
+    "popup_falha": {"NOTIFY_RC": "1"},
+    "zumbi": {"NOTIFY_SLEEP": "0.5"},
+}
+# teto de cada pw-play no harness; no clique ele é alto para provar que quem parou foi o clique
+TETO = {"clique": 5.0}
+ESPERA = {"pwplay_trava": 1.8, "zumbi": 1.5}
 
 
 def fakes(base, com_pwplay=True):
@@ -45,10 +64,14 @@ def fakes(base, com_pwplay=True):
     os.makedirs(bindir)
     log = os.path.join(base, "calls.log")
     nomes = ["notify-send"] + (["pw-play"] if com_pwplay else [])
+    var = {"notify-send": "NOTIFY", "pw-play": "PWPLAY"}
     for nome in nomes:
         p = os.path.join(bindir, nome)
         with open(p, "w") as fh:
-            fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n')
+            fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n'
+                     f'echo $$ >> "{base}/{nome}.pids"\n'
+                     f'[ -n "${var[nome]}_RC" ] && exit "${var[nome]}_RC"\n'
+                     f'exec /bin/sleep "${{{var[nome]}_SLEEP:-0}}"\n')
         os.chmod(p, 0o755)
     os.environ["PATH"] = bindir  # so os falsos: um pw-play real do host nao pode atrapalhar
     return log
@@ -69,6 +92,36 @@ def atender(srv, linhas):
     for linha in linhas:
         conn.sendall(linha)
     return conn
+
+
+def vivos(base, nome):
+    """Quantos processos do falso `nome` ainda estão vivos (zumbi conta como morto)."""
+    try:
+        pids = [int(x) for x in open(os.path.join(base, f"{nome}.pids")).read().split()]
+    except FileNotFoundError:
+        return 0
+    n = 0
+    for pid in pids:
+        try:
+            estado = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            continue
+        n += estado != "Z"
+    return n
+
+
+def zumbis():
+    """Filhos deste processo que terminaram e ninguém recolheu."""
+    n = 0
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        try:
+            campos = open(f"/proc/{d}/stat").read().rsplit(")", 1)[1].split()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        n += campos[0] == "Z" and int(campos[1]) == os.getpid()
+    return n
 
 
 def instancia_unica(base):
@@ -114,6 +167,9 @@ def main():
     os.makedirs(base)
     if caso == "instancia_unica":
         return instancia_unica(base)
+    os.environ.update({"NOTIFY_SLEEP": "3", **AMBIENTE.get(caso, {})})
+    edr_notify.SOUND_GAP = 0.05
+    edr_notify.SOUND_MAX = {sev: TETO.get(caso, 0.3) for sev in ("MEDIUM", "HIGH", "CRITICAL")}
     log = fakes(base, com_pwplay=(caso != "sem_pwplay"))
     if caso == "aceita_e_fecha":
         return aceita_e_fecha(base)
@@ -144,11 +200,15 @@ def main():
         print(f"caso desconhecido: {caso}", file=sys.stderr)
         return 2
 
-    time.sleep(0.8)  # tempo para o vigia avisar e os falsos gravarem
+    time.sleep(ESPERA.get(caso, 0.8))  # tempo para o vigia avisar e os falsos gravarem
+    print(f"pwplay_vivos={vivos(base, 'pw-play')} zumbis={zumbis()}")
     stop.set()
     t.join(5)
     conn.close()
     srv.close()
+    for p in getattr(edr_notify, "_children", []):
+        if p.poll() is None:
+            p.kill()
     if t.is_alive():
         print("o vigia nao parou com o stop", file=sys.stderr)
         return 3

@@ -759,7 +759,7 @@ som_aviso="pw-play /usr/share/sounds/freedesktop/stereo/dialog-warning\.oga"
 # T2-F9-01
 test_case_start "T2_F9_01" "Alerta HIGH gera popup crítico e o som de alarme"
 run_edr high
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
 assert_contains "$LAST_CMD_OUTPUT" "$som_alarme" "Som de alarme no HIGH"
 assert_not_contains "$LAST_CMD_OUTPUT" "expire-time" "HIGH fica na tela até ser fechado"
 test_case_end
@@ -767,7 +767,7 @@ test_case_end
 # T2-F9-02
 test_case_start "T2_F9_02" "Alerta MEDIUM gera popup normal e o som de aviso"
 run_edr medium
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal --expire-time=10000 -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal --expire-time=10000 --wait --action=default=Silenciar -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
 assert_contains "$LAST_CMD_OUTPUT" "$som_aviso" "Som de aviso no MEDIUM"
 test_case_end
 
@@ -784,10 +784,10 @@ assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "MEDIUM abaixo do l
 test_case_end
 
 # T2-F9-05
-test_case_start "T2_F9_05" "Dois HIGH seguidos: 2 popups e 1 som (cooldown de 5 s)"
+test_case_start "T2_F9_05" "Dois HIGH seguidos: 2 popups e um toque só, sem sobrepor"
 run_edr cooldown
 assert_eq "2" "$(conta '^notify-send ')" "Os popups saem todos"
-assert_eq "1" "$(conta '^pw-play ')" "No máximo 1 som a cada 5 s"
+assert_eq "3" "$(conta '^pw-play ')" "Só o toque do primeiro (3 vezes); o segundo não sobrepõe"
 test_case_end
 
 # T2-F9-06
@@ -813,7 +813,7 @@ test_case_end
 # T2-F9-09
 test_case_start "T2_F9_09" "Resumo começando com traço não vira opção do notify-send"
 run_edr traco
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
 test_case_end
 
 # T2-F9-10
@@ -839,6 +839,38 @@ test_case_end
 test_case_start "T2_F9_13" "Markup no resumo é escapado antes de ir para o popup"
 run_edr markup
 assert_contains "$LAST_CMD_OUTPUT" "behavior\.revshell: Tom &amp; Jerry &lt;b&gt;x&lt;/b&gt;\.sh" "Corpo do popup sem markup interpretável"
+test_case_end
+
+# T2-F9-14
+test_case_start "T2_F9_14" "O som de uma ocorrência repete 3 vezes e para"
+run_edr high
+assert_eq "3" "$(conta "^$som_alarme")" "3 toques do alarme para um HIGH"
+test_case_end
+
+# T2-F9-15
+test_case_start "T2_F9_15" "Clique no popup para o som na hora, mesmo no meio de um toque"
+run_edr clique
+assert_eq "1" "$(conta '^pw-play ')" "Nenhum toque depois do clique"
+assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=0 " "O pw-play que tocava foi parado"
+test_case_end
+
+# T2-F9-16
+test_case_start "T2_F9_16" "pw-play travado é parado pelo teto e o toque não passa de 3"
+run_edr pwplay_trava
+assert_eq "3" "$(conta '^pw-play ')" "3 toques, cada um cortado pelo teto"
+assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=0 " "Nenhum pw-play fica tocando para sempre"
+test_case_end
+
+# T2-F9-17
+test_case_start "T2_F9_17" "Sem daemon de notificação (notify-send falha), o som toca as 3 vezes"
+run_edr popup_falha
+assert_eq "3" "$(conta '^pw-play ')" "Falha do popup não é confundida com clique"
+test_case_end
+
+# T2-F9-18
+test_case_start "T2_F9_18" "Processos filhos que terminam são recolhidos (sem zumbis)"
+run_edr zumbi
+assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=[0-9]+ zumbis=0" "Nenhum pw-play ou notify-send zumbi"
 test_case_end
 
 # Finaliza a suíte

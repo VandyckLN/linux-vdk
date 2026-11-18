@@ -19,7 +19,10 @@ import time
 from typing import Any
 
 SEVERITIES = ("INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL")
-SOUND_COOLDOWN = 5.0
+SOUND_REPEATS = 3  # toques por ocorrência; o clique no popup para antes
+SOUND_GAP = 1.0  # pausa entre um toque e outro
+# teto de cada pw-play: em algumas VMs ele não termina no fim do arquivo e toca para sempre
+SOUND_MAX = {"MEDIUM": 2.0, "HIGH": 8.0, "CRITICAL": 8.0}
 MAX_LINE = 64 * 1024
 MEDIUM_EXPIRE_MS = 10000  # MEDIUM some sozinho; HIGH/CRITICAL ficam até a pessoa fechar
 HEALTHY_CONNECTION = 5.0  # conexão que durou isso (ou trouxe dados) zera o backoff
@@ -31,8 +34,8 @@ SOUNDS = {
     "CRITICAL": "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga",
 }
 
-_last_sound: float | None = None
 _children: list[subprocess.Popen] = []
+_ringing = threading.Event()  # um toque por vez: alerta novo durante um toque não sobrepõe
 _warned: set[str] = set()
 
 
@@ -65,22 +68,54 @@ def _reap() -> None:
     _children[:] = [p for p in _children if p.poll() is None]
 
 
-def _spawn(cmd: list[str]) -> None:
-    """Dispara sem esperar: um notify-send travado não pode congelar a leitura do socket."""
+def _popen(cmd: list[str]) -> subprocess.Popen | None:
     try:
-        _children.append(subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
-                                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        return subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError as exc:
         _warn_once(cmd[0], f"não foi possível rodar {cmd[0]}: {exc.strerror or exc}")
+        return None
 
 
-def notify(alert: dict, sound_enabled: bool, now: float) -> None:
-    global _last_sound
+def _spawn(cmd: list[str]) -> subprocess.Popen | None:
+    """Dispara sem esperar: um notify-send travado não pode congelar a leitura do socket."""
+    proc = _popen(cmd)
+    if proc is not None:
+        _children.append(proc)
+    return proc
+
+
+def _clicked(popup: subprocess.Popen | None) -> bool:
+    """O popup fechou normalmente (clique ou expirou). Falha do notify-send não conta."""
+    return popup is not None and popup.poll() == 0
+
+
+def _ring(sound: str, max_play: float, popup: subprocess.Popen | None) -> None:
+    """Toca até SOUND_REPEATS vezes; para na hora se o popup fechar."""
+    try:
+        for i in range(SOUND_REPEATS):
+            if _clicked(popup):
+                return
+            player = _popen(["pw-play", sound])
+            if player is None:
+                return
+            deadline = time.monotonic() + max_play
+            while player.poll() is None and time.monotonic() < deadline and not _clicked(popup):
+                time.sleep(0.05)
+            if player.poll() is None:
+                player.kill()
+                player.wait()
+            if i < SOUND_REPEATS - 1:
+                gap_end = time.monotonic() + SOUND_GAP
+                while time.monotonic() < gap_end and not _clicked(popup):
+                    time.sleep(0.05)
+    finally:
+        _ringing.clear()
+
+
+def notify(alert: dict, sound_enabled: bool) -> None:
     _reap()
     sev = alert["severity"]
-    if sound_enabled and sev in SOUNDS and (_last_sound is None or now - _last_sound >= SOUND_COOLDOWN):
-        _last_sound = now
-        _spawn(["pw-play", SOUNDS[sev]])
     if sev in ("HIGH", "CRITICAL"):
         opts = ["--urgency=critical"]
     else:
@@ -88,8 +123,13 @@ def notify(alert: dict, sound_enabled: bool, now: float) -> None:
     # o corpo do popup é markup Pango no mako: um "&" ou "<b>" num nome de arquivo
     # quebraria ou forjaria o texto
     body = html.escape(f"{alert['rule']}: {alert['summary']}", quote=False)
-    # "--": um resumo começando com "-" não pode virar opção do notify-send
-    _spawn(["notify-send", "--app-name=Mandacaru", *opts, "--", f"Mandacaru: {sev}", body])
+    # --wait com ação padrão: o notify-send só termina quando o popup fecha (clique ou
+    # expirou), e é isso que para o som. "--": um resumo começando com "-" não vira opção.
+    popup = _spawn(["notify-send", "--app-name=Mandacaru", *opts, "--wait",
+                    "--action=default=Silenciar", "--", f"Mandacaru: {sev}", body])
+    if sound_enabled and sev in SOUNDS and not _ringing.is_set():
+        _ringing.set()
+        threading.Thread(target=_ring, args=(SOUNDS[sev], SOUND_MAX[sev], popup), daemon=True).start()
 
 
 def load_settings(data: dict[str, Any]) -> tuple[str, str, bool]:
@@ -128,6 +168,7 @@ def _read_alerts(conn: socket.socket, stop: threading.Event, got_data: list[bool
         try:
             chunk = conn.recv(65536)
         except socket.timeout:
+            _reap()  # popup que fechou sem alerta novo chegando não pode virar zumbi
             continue
         except OSError:
             return
@@ -171,7 +212,7 @@ def run(socket_path: str, min_severity: str, sound_enabled: bool, stop: threadin
             for line in _read_alerts(conn, stop, got_data):
                 alert = parse_alert(line)
                 if alert and should_notify(alert, min_severity):
-                    notify(alert, sound_enabled, time.monotonic())
+                    notify(alert, sound_enabled)
         finally:
             conn.close()
         if got_data[0] or time.monotonic() - started >= HEALTHY_CONNECTION:

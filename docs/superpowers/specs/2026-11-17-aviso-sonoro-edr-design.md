@@ -29,11 +29,14 @@ Ponto de entrada: `python3 -m shell.edr_notify`. Interfaces internas, que são o
 
 - `parse_alert(line: bytes) -> dict | None`: devolve o alerta se a linha é um JSON com `v == 1`, `severity` entre as conhecidas (`INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) e `rule` e `summary` em texto. Se não, devolve `None`.
 - `should_notify(alert, min_severity: str) -> bool`: compara as severidades pela ordem acima.
-- `notify(alert, sound_enabled: bool, now: float) -> None`:
-  - **Som:** com `sound_enabled`, e se o último som foi há mais de **5 s**, roda `pw-play` em segundo plano, sem esperar terminar. Os arquivos são:
+- `notify(alert, sound_enabled: bool) -> None`:
+  - **Popup:** sempre roda `notify-send --app-name=Mandacaru --urgency=<u> [--expire-time=10000] --wait --action=default=Silenciar -- "Mandacaru: <SEVERIDADE>" "<rule>: <summary>"`. A urgência é `normal` para MEDIUM, que some em 10 s, e `critical` para HIGH e CRITICAL, que ficam na tela até o clique. Com `--wait` e a ação padrão, o `notify-send` só termina quando o popup fecha.
+  - **Som (toque):** com `sound_enabled`, uma thread toca o arquivo da severidade com `pw-play` **até 3 vezes**, com 1 s de pausa entre um e outro. Os arquivos são:
     - MEDIUM: `/usr/share/sounds/freedesktop/stereo/dialog-warning.oga`;
     - HIGH e CRITICAL: `/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga`.
-  - **Popup:** sempre roda `notify-send --app-name=Mandacaru --urgency=<u> "Mandacaru: <SEVERIDADE>" "<rule>: <summary>"`. A urgência é `normal` para MEDIUM e `critical` para HIGH e CRITICAL.
+  - **O toque para** quando o popup fecha com sucesso (clique ou expirou): o `pw-play` que estiver tocando é morto na hora. Uma falha do `notify-send` (sem daemon de notificação) não conta como clique, e o som toca as 3 vezes.
+  - **Teto por `pw-play`:** 2 s no MEDIUM e 8 s no HIGH e CRITICAL. Passou disso, o processo é morto. Na VM do teste manual o `pw-play` não terminava no fim do arquivo e o som não parava.
+  - **Um toque por vez:** alerta novo durante um toque mostra o popup, mas não sobrepõe o som.
 - `run(socket_path: str, min_severity: str, sound_enabled: bool) -> None`: o laço que conecta no socket, lê linha por linha e chama as funções acima.
 
 **Configuração:** lida pelo `ConfigStore` que já existe, na seção nova do `config/shell.default.json`:
@@ -96,7 +99,9 @@ O `pw-play` vem do `pipewire-bin`, que é dependência do `pipewire`.
 | Linha maior que 64 KiB sem `\n` | O buffer é descartado e a leitura segue a partir da próxima linha. |
 | Conexão termina com uma linha incompleta (o Mandacaru derrubou o vigia no meio de um envio) | O fragmento sem `\n` é descartado, e o vigia volta ao laço de reconexão. |
 | `pw-play` ou `notify-send` ausente ou falhando | Um aviso no stderr na primeira falha de cada um. O outro canal continua funcionando. |
-| Rajada de alertas | No máximo 1 som a cada 5 s. Os popups saem todos (o Mandacaru já descarta repetidos em 30 s). |
+| Rajada de alertas | Um toque por vez: alerta que chega durante um toque não sobrepõe o som. Os popups saem todos (o Mandacaru já descarta repetidos em 30 s). |
+| `pw-play` que não termina no fim do arquivo | Morto pelo teto (2 s no MEDIUM, 8 s no HIGH e CRITICAL), e o toque segue para a próxima repetição ou acaba. |
+| Processos filhos que terminam | São recolhidos a cada 0,5 s, mesmo sem alerta novo, e não viram zumbis. |
 
 ## 6. Testes
 
@@ -109,7 +114,12 @@ Testes E2E nos tiers que já existem, sem rede e sem root:
 | 2 | Com um servidor de socket falso (Python, em `$SANDBOX_DIR`) e `pw-play` e `notify-send` falsos no `PATH` que gravam os argumentos num arquivo: um alerta HIGH gera `notify-send --urgency=critical` com `Mandacaru: HIGH` e toca o `alarm-clock-elapsed.oga`. |
 | 2 | Um MEDIUM gera `--urgency=normal` e o `dialog-warning.oga`. Um LOW não gera nada. |
 | 2 | Com `notify_min_severity = "HIGH"`, o MEDIUM não gera nada. |
-| 2 | Dois HIGH em menos de 5 s geram 2 popups e 1 som. |
+| 2 | Dois HIGH seguidos geram 2 popups e um toque só (3 `pw-play`), sem sobrepor. |
+| 2 | Um HIGH toca o alarme 3 vezes e para. |
+| 2 | Popup fechado no meio do toque (clique) para o som na hora, e o `pw-play` que tocava morre. |
+| 2 | `pw-play` travado é morto pelo teto, e o toque não passa de 3. |
+| 2 | Com o `notify-send` falhando, o som toca as 3 vezes. |
+| 2 | Nenhum `pw-play` ou `notify-send` fica zumbi. |
 | 2 | Uma linha de JSON inválido, uma com `v: 2` e uma com severidade desconhecida são ignoradas, e o alerta seguinte ainda é avisado. |
 | 2 | O servidor cai e volta no mesmo caminho, e o alerta enviado depois da volta é avisado. |
 | 2 | Com `pw-play` ausente do `PATH`, o popup sai mesmo assim. |
@@ -122,7 +132,7 @@ Testes E2E nos tiers que já existem, sem rede e sem root:
 1. `ls -l /run/mandacaru/alerts.sock` mostra `srw-rw---- root mandacaru`, e `id` mostra o usuário da live no grupo `mandacaru`.
 2. `pgrep -a mako` e `pgrep -af edr_notify` mostram os dois rodando na sessão.
 3. Um alerta **MEDIUM** (`cp /usr/bin/true /tmp/x && /tmp/x`, que dispara a regra `behavior.exec_from_temp`) gera o popup normal e o som `dialog-warning`.
-4. Um alerta **HIGH** (`ln -s /usr/bin/python3 ~/node && ~/node -c 'import subprocess; subprocess.run(["bash", "-c", "true"])'`, que dispara a regra `behavior.service_spawned_shell`, porque o Mandacaru trata `node` como serviço) gera o popup crítico, que fica na tela, e o som `alarm-clock-elapsed`.
+4. Um alerta **HIGH** (`ln -s /usr/bin/python3 ~/node && ~/node -c 'import subprocess; subprocess.run(["bash", "-c", "true"])'`, que dispara a regra `behavior.service_spawned_shell`, porque o Mandacaru trata `node` como serviço) gera o popup crítico, que fica na tela, e o som `alarm-clock-elapsed`, que toca no máximo 3 vezes e para na hora quando o popup é clicado.
 5. O EICAR gera um alerta **LOW** e por isso **não** deve avisar, porque o limiar padrão é MEDIUM.
 
 **Critério de pronto:** suíte E2E 100% verde e teste manual na VM aprovado.
