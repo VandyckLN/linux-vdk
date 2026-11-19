@@ -55,6 +55,16 @@ CASOS = {
     "sem_id_abaixo_limiar": ([alerta("LOW")], "CRITICAL"),
     # mesmo arquivo casando duas regras: dois alertas com o mesmo id, um popup so
     "id_repetido": ([alerta(quarantine_id=ID), alerta("MEDIUM", quarantine_id=ID)], "MEDIUM"),
+    # numero = pausa (s) entre os envios
+    # popup fechou sem clique: um novo alerta do mesmo caso volta a perguntar
+    "id_reabre": ([alerta(quarantine_id=ID), 0.5, alerta(quarantine_id=ID)], "MEDIUM"),
+    # popup aberto e clicado: o mesmo caso nao pergunta de novo
+    "id_clicado_nao_reabre": ([alerta(quarantine_id=ID), 0.5, alerta(quarantine_id=ID)], "MEDIUM"),
+    # severidade sobe: LOW depois CRITICAL do mesmo id anuncia de novo, no maximo uma vez por nivel
+    "id_sobe": ([alerta("LOW", quarantine_id=ID), alerta("CRITICAL", quarantine_id=ID),
+                 alerta("CRITICAL", quarantine_id=ID), alerta("LOW", quarantine_id=ID)], "MEDIUM"),
+    # sem notify-send (nao inicia): o id nao fica marcado
+    "id_sem_notify": ([alerta(quarantine_id=ID)], "MEDIUM"),
 }
 
 # Como os falsos se comportam em cada caso. Padrão: o popup fica aberto 3 s (como um
@@ -77,17 +87,19 @@ AMBIENTE = {
     "id_abaixo_limiar": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
     "sem_id_abaixo_limiar": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
     "id_repetido": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "id_reabre": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": ""},
+    "id_clicado_nao_reabre": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
 }
 # teto de cada pw-play no harness; no clique ele é alto para provar que quem parou foi o clique
 TETO = {"clique": 5.0}
 ESPERA = {"pwplay_trava": 1.8, "zumbi": 1.5}
 
 
-def fakes(base, com_pwplay=True):
+def fakes(base, com_pwplay=True, com_notify=True):
     bindir = os.path.join(base, "bin")
     os.makedirs(bindir)
     log = os.path.join(base, "calls.log")
-    nomes = ["notify-send"] + (["pw-play"] if com_pwplay else [])
+    nomes = (["notify-send"] if com_notify else []) + (["pw-play"] if com_pwplay else [])
     var = {"notify-send": "NOTIFY", "pw-play": "PWPLAY"}
     for nome in nomes:
         p = os.path.join(bindir, nome)
@@ -122,6 +134,9 @@ def servidor(path):
 def atender(srv, linhas):
     conn, _ = srv.accept()
     for linha in linhas:
+        if isinstance(linha, float):
+            time.sleep(linha)
+            continue
         conn.sendall(linha)
     return conn
 
@@ -202,7 +217,7 @@ def main():
     os.environ.update({"NOTIFY_SLEEP": "3", **AMBIENTE.get(caso, {})})
     edr_notify.SOUND_GAP = 0.05
     edr_notify.SOUND_MAX = {sev: TETO.get(caso, 0.3) for sev in ("MEDIUM", "HIGH", "CRITICAL")}
-    log = fakes(base, com_pwplay=(caso != "sem_pwplay"))
+    log = fakes(base, com_pwplay=(caso != "sem_pwplay"), com_notify=(caso != "id_sem_notify"))
     if caso == "aceita_e_fecha":
         return aceita_e_fecha(base)
     path = os.path.join(base, "s.sock")
@@ -233,6 +248,14 @@ def main():
         return 2
 
     time.sleep(ESPERA.get(caso, 0.8))  # tempo para o vigia avisar e os falsos gravarem
+    if float(os.environ["NOTIFY_SLEEP"]) < 1:
+        # popup curto: espera a thread do clique decidir (abrir a janela ou esquecer o id)
+        fim = time.monotonic() + 3
+        while time.monotonic() < fim and any(x.name == "edr-click" and x.is_alive()
+                                             for x in threading.enumerate()):
+            time.sleep(0.05)
+        time.sleep(0.3)  # o falso da janela grava a chamada logo depois de iniciar
+    print(f"anunciados={len(edr_notify._announced)}")
     print(f"pwplay_vivos={vivos(base, 'pw-play')} zumbis={zumbis()}")
     stop.set()
     t.join(5)

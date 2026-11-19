@@ -16,7 +16,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections import deque
+from collections import OrderedDict
 from typing import Any
 
 from .quarantine_dialog import valid_id
@@ -41,13 +41,15 @@ SOUNDS = {
 DIALOG_CMD: list[str] = [sys.executable, "-m", "shell.quarantine_dialog"]
 
 _children: list[subprocess.Popen] = []
+_children_lock = threading.Lock()  # _spawn (thread do clique) e _reap (thread principal) mexem na lista
 _ringing = threading.Event()  # um toque por vez: alerta novo durante um toque não sobrepõe
 _warned: set[str] = set()
-# ids de casos já anunciados (últimos ANNOUNCED_MAX): um arquivo que casa N regras chega
-# como N alertas com o mesmo id, mas a pergunta só pode aparecer uma vez
+# ids de casos já anunciados -> nível de severidade anunciado (últimos ANNOUNCED_MAX): um arquivo
+# que casa N regras chega como N alertas com o mesmo id, mas a pergunta só aparece uma vez,
+# a não ser que chegue um alerta do mesmo caso de severidade estritamente maior
 ANNOUNCED_MAX = 256
-_announced_order: deque[str] = deque()
-_announced: set[str] = set()
+_announced: OrderedDict[str, int] = OrderedDict()
+_announced_lock = threading.Lock()  # a thread do clique também mexe aqui
 
 
 def _warn_once(key: str, msg: str) -> None:
@@ -75,19 +77,29 @@ def should_notify(alert: dict, min_severity: str) -> bool:
     return SEVERITIES.index(alert["severity"]) >= SEVERITIES.index(min_severity)
 
 
-def _first_announcement(case_id: str) -> bool:
-    """True na primeira vez que o caso aparece; guarda só os últimos ANNOUNCED_MAX ids."""
-    if case_id in _announced:
-        return False
-    _announced.add(case_id)
-    _announced_order.append(case_id)
-    if len(_announced_order) > ANNOUNCED_MAX:
-        _announced.discard(_announced_order.popleft())
-    return True
+def _claim_announcement(case_id: str, severity: str) -> bool:
+    """True se o caso é novo ou chegou com severidade estritamente maior que a anunciada."""
+    level = SEVERITIES.index(severity)
+    with _announced_lock:
+        if _announced.get(case_id, -1) >= level:
+            return False
+        _announced[case_id] = level
+        _announced.move_to_end(case_id)
+        while len(_announced) > ANNOUNCED_MAX:
+            _announced.popitem(last=False)
+        return True
+
+
+def _release_announcement(case_id: str, severity: str) -> None:
+    """Esquece o caso se este popup foi o último a anunciá-lo (fechou sem clique ou nem abriu)."""
+    with _announced_lock:
+        if _announced.get(case_id) == SEVERITIES.index(severity):
+            del _announced[case_id]
 
 
 def _reap() -> None:
-    _children[:] = [p for p in _children if p.poll() is None]
+    with _children_lock:
+        _children[:] = [p for p in _children if p.poll() is None]
 
 
 def _popen(cmd: list[str], stdout: int = subprocess.DEVNULL) -> subprocess.Popen | None:
@@ -103,7 +115,8 @@ def _spawn(cmd: list[str], stdout: int = subprocess.DEVNULL) -> subprocess.Popen
     """Dispara sem esperar: um notify-send travado não pode congelar a leitura do socket."""
     proc = _popen(cmd, stdout)
     if proc is not None:
-        _children.append(proc)
+        with _children_lock:
+            _children.append(proc)
     return proc
 
 
@@ -135,21 +148,25 @@ def _ring(sound: str, max_play: float, popup: subprocess.Popen | None) -> None:
         _ringing.clear()
 
 
-# "--opcao=valor" (e não duas palavras): um valor que começa com "-" não vira opção do argparse
-def _open_on_click(popup: subprocess.Popen, case_id: str, rule: str, summary: str) -> None:
+def _open_on_click(popup: subprocess.Popen, case_id: str, alert: dict) -> None:
     """Espera o popup fechar; só a saída exata "default" (clique na ação) abre a janela."""
     try:
         out = popup.stdout.read()
         popup.wait()  # recolhe o notify-send
     except (OSError, ValueError):
-        return
+        out = b""
     finally:
         popup.stdout.close()
     if out.decode(errors="replace").strip() == "default":
-        _spawn([*DIALOG_CMD, case_id, f"--rule={rule}", f"--summary={summary}"])
+        # "--opcao=valor" (e não duas palavras): um valor que começa com "-" não vira opção do argparse
+        _spawn([*DIALOG_CMD, case_id, f"--rule={alert['rule']}", f"--summary={alert['summary']}"])
+    else:
+        # expirou ou foi dispensado sem resposta: um novo alerta do caso volta a perguntar
+        _release_announcement(case_id, alert["severity"])
 
 
-def notify(alert: dict, sound_enabled: bool) -> None:
+def notify(alert: dict, sound_enabled: bool) -> bool:
+    """Mostra o popup e toca o som. False se o notify-send nem chegou a iniciar."""
     _reap()
     sev = alert["severity"]
     if sev in ("HIGH", "CRITICAL"):
@@ -168,14 +185,15 @@ def notify(alert: dict, sound_enabled: bool) -> None:
                         "--action=default=O que fazer?", "--", f"Mandacaru: arquivo isolado ({sev})", body],
                        stdout=subprocess.PIPE)
         if popup is not None:
-            threading.Thread(target=_open_on_click, args=(popup, case_id, alert["rule"], alert["summary"]),
-                             daemon=True).start()
+            threading.Thread(target=_open_on_click, args=(popup, case_id, alert),
+                             name="edr-click", daemon=True).start()
     else:
         popup = _spawn(["notify-send", "--app-name=Mandacaru", "--icon=mandacaru", *opts, "--wait",
                         "--action=default=Silenciar", "--", f"Mandacaru: {sev}", body])
     if sound_enabled and sev in SOUNDS and not _ringing.is_set():
         _ringing.set()
         threading.Thread(target=_ring, args=(SOUNDS[sev], SOUND_MAX[sev], popup), daemon=True).start()
+    return popup is not None
 
 
 def load_settings(data: dict[str, Any]) -> tuple[str, str, bool]:
@@ -263,8 +281,9 @@ def run(socket_path: str, min_severity: str, sound_enabled: bool, stop: threadin
                 if valid_id(case_id):
                     # arquivo já isolado: toda decisão pendente vira pergunta, qualquer que
                     # seja o limiar, mas uma vez só por caso
-                    if _first_announcement(case_id):
-                        notify(alert, sound_enabled)
+                    if _claim_announcement(case_id, alert["severity"]):
+                        if not notify(alert, sound_enabled):
+                            _release_announcement(case_id, alert["severity"])
                 elif should_notify(alert, min_severity):
                     notify(alert, sound_enabled)
         finally:

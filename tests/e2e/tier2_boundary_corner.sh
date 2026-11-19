@@ -896,12 +896,14 @@ test_case_end
 test_case_start "T2_F9_20" "Popup dispensado ou expirado (stdout vazio) não abre a janela"
 run_edr dismiss
 assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela"
+assert_contains "$LAST_CMD_OUTPUT" "anunciados=0" "Fechou sem clique: o caso não fica marcado como anunciado"
 test_case_end
 
 # T2-F9-21
 test_case_start "T2_F9_21" "quarantine_id inválido vira popup comum, sem janela"
 run_edr id_invalido
 assert_eq "2" "$(conta 'action=default=Silenciar -- Mandacaru: HIGH')" "Os dois saem como popup comum"
+assert_contains "$LAST_CMD_OUTPUT" "anunciados=0" "Id inválido não entra no conjunto de anunciados"
 assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela"
 test_case_end
 
@@ -913,20 +915,20 @@ assert_contains "$LAST_CMD_OUTPUT" "--summary=-x Tom & <b>y</b>" "Janela recebe 
 assert_contains "$LAST_CMD_OUTPUT" "dialog_parse=abababababababababababababababab\|behavior\.revshell\|-x Tom & <b>y</b>" "O argparse da janela aceita o argv e devolve o resumo intacto"
 test_case_end
 
-# T2-F9-25
-test_case_start "T2_F9_25" "Resumo sem espaço começando com traço chega inteiro à janela"
+# T2-F9-23
+test_case_start "T2_F9_23" "Resumo sem espaço começando com traço chega inteiro à janela"
 run_edr id_traco
 assert_contains "$LAST_CMD_OUTPUT" "dialog_parse=abababababababababababababababab\|behavior\.revshell\|--help" "Nada de 'expected one argument'"
 test_case_end
 
-# T2-F9-23
-test_case_start "T2_F9_23" "MEDIUM com id segue expirando em 10 s"
+# T2-F9-24
+test_case_start "T2_F9_24" "MEDIUM com id segue expirando em 10 s"
 run_edr id_medium
 assert_contains "$LAST_CMD_OUTPUT" "--urgency=normal --expire-time=10000 --wait --action=default=O que fazer\? -- Mandacaru: arquivo isolado \(MEDIUM\)" "Título e expire do MEDIUM"
 test_case_end
 
-# T2-F9-24
-test_case_start "T2_F9_24" "Clique num alerta sem id não abre a janela"
+# T2-F9-25
+test_case_start "T2_F9_25" "Clique num alerta sem id não abre a janela"
 run_edr clique
 assert_eq "0" "$(conta '^lumen-quarentena ')" "Alerta sem id só silencia"
 test_case_end
@@ -949,6 +951,34 @@ test_case_start "T2_F9_28" "Dois alertas com o mesmo id geram um popup só"
 run_edr id_repetido
 assert_eq "1" "$(conta '^notify-send ')" "Um popup por caso"
 assert_eq "1" "$(conta '^lumen-quarentena ')" "Uma janela por caso"
+test_case_end
+
+# T2-F9-29
+test_case_start "T2_F9_29" "Popup do caso que fechou sem clique: novo alerta do mesmo id pergunta de novo"
+run_edr id_reabre
+assert_eq "2" "$(conta '^notify-send .*arquivo isolado')" "Segundo popup depois do fechamento"
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela sem clique"
+test_case_end
+
+# T2-F9-30
+test_case_start "T2_F9_30" "Popup clicado: o mesmo id não pergunta de novo"
+run_edr id_clicado_nao_reabre
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado')" "Um popup só"
+assert_eq "1" "$(conta '^lumen-quarentena ')" "Uma janela"
+test_case_end
+
+# T2-F9-31
+test_case_start "T2_F9_31" "Mesmo id com severidade maior anuncia de novo, uma vez por nível"
+run_edr id_sobe
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado \(LOW\)')" "LOW anunciado uma vez"
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado \(CRITICAL\)')" "CRITICAL anunciado uma vez, mesmo depois do LOW"
+assert_eq "2" "$(conta '^notify-send ')" "Nem o CRITICAL repetido nem o LOW de volta geram popup"
+test_case_end
+
+# T2-F9-32
+test_case_start "T2_F9_32" "Sem notify-send o id não fica marcado como anunciado"
+run_edr id_sem_notify
+assert_contains "$LAST_CMD_OUTPUT" "anunciados=0" "Popup que não iniciou não consome o caso"
 test_case_end
 
 # ==============================================================================
