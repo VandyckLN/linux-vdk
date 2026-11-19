@@ -307,7 +307,7 @@ need("lumen-compositor", "hyprpolkitagent")
 # a janela de senha (o pacote do Ubuntu não declara essa dependência).
 need("lumen-compositor", "qt6-wayland")
 # Mandacaru (EDR) com eBPF vem por padrão no desktop.
-need("lumen-desktop", "mandacaru (>= 0.3.0)")
+need("lumen-desktop", "mandacaru (>= 0.4.0)")
 need("lumen-desktop", "python3-bpfcc")
 # Aviso sonoro e popup dos alertas do Mandacaru: áudio, notificação e tema de sons.
 for dep in ("pipewire", "pipewire-pulse", "wireplumber", "mako-notifier", "libnotify-bin",
@@ -368,6 +368,13 @@ for conf in "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "${WORKSPACE_R
 done
 assert_contains "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "^exec-once = /usr/bin/lumen-edr-notify$" "Vigia instalado sobe na sessão"
 assert_contains "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf" "^exec-once = python3 -m shell\.edr_notify$" "Vigia de desenvolvimento sobe na sessão"
+test_case_end
+
+test_case_start "T3_PAIR9_JANELA_QUARENTENA_FLUTUANTE" "Os dois hyprland.conf abrem a janela da quarentena flutuante e no centro"
+for conf in "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf"; do
+    assert_contains "$conf" "^windowrule = float on, match:class io\.github\.vandyckln\.lumen\.quarentena$" "Janela da quarentena flutuante ($conf)"
+    assert_contains "$conf" "^windowrule = center on, match:class io\.github\.vandyckln\.lumen\.quarentena$" "Janela da quarentena centralizada ($conf)"
+done
 test_case_end
 
 test_case_start "T3_PAIR9_PACOTE_INSTALA_VIGIA" "build-debs.sh instala o lumen-edr-notify em /usr/bin no lumen-shell"
