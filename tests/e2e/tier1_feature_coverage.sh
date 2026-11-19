@@ -569,10 +569,10 @@ test_case_end
 # T1-F9-01
 test_case_start "T1_F9_01" "mandacaru.lock fixa versão, URL https e SHA256"
 lock="${WORKSPACE_ROOT}/packaging/third-party/mandacaru.lock"
-assert_contains "$lock" "^MANDACARU_VERSION=0\.3\.0$" "Versão fixada em 0.3.0"
-assert_contains "$lock" "^MANDACARU_URL=https://github\.com/VandyckLN/mandacaru/releases/download/v0\.3\.0/mandacaru_0\.3\.0_all\.deb$" "URL https da release v0.3.0"
+assert_contains "$lock" "^MANDACARU_VERSION=0\.4\.0$" "Versão fixada em 0.4.0"
+assert_contains "$lock" "^MANDACARU_URL=https://github\.com/VandyckLN/mandacaru/releases/download/v0\.4\.0/mandacaru_0\.4\.0_all\.deb$" "URL https da release v0.4.0"
 assert_contains "$lock" "^MANDACARU_SHA256=[0-9a-f]{64}$" "SHA256 com 64 caracteres hex"
-assert_contains "$lock" "^MANDACARU_SHA256=408d8a56e38d1b0c455d32c30455d777184ce1d9b5c02f6b2e2086f32acaa402$" "SHA256 da release v0.3.0"
+assert_contains "$lock" "^MANDACARU_SHA256=44b013c25730867c998831cbf61e3db7c85af312e0dbb5b765fd5a0957d79f8a$" "SHA256 da release v0.4.0"
 test_case_end
 
 # T1-F9-02

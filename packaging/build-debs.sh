@@ -252,7 +252,7 @@ Priority: optional
 Architecture: all
 Maintainer: Lumen OS Developers <contact@lumenos.dev>
 Provides: distro-desktop
-Depends: lumen-shell (= $VERSION) | distro-shell, lumen-compositor (= $VERSION) | distro-compositor, lumen-system (= $VERSION) | distro-system, lumen-dev-stack (= $VERSION) | distro-dev-stack, lumen-welcome (= $VERSION) | distro-welcome, mandacaru (>= 0.3.0), python3-bpfcc, pipewire, pipewire-pulse, wireplumber, mako-notifier, libnotify-bin, sound-theme-freedesktop
+Depends: lumen-shell (= $VERSION) | distro-shell, lumen-compositor (= $VERSION) | distro-compositor, lumen-system (= $VERSION) | distro-system, lumen-dev-stack (= $VERSION) | distro-dev-stack, lumen-welcome (= $VERSION) | distro-welcome, mandacaru (>= 0.4.0), python3-bpfcc, pipewire, pipewire-pulse, wireplumber, mako-notifier, libnotify-bin, sound-theme-freedesktop
 Recommends: greetd | sddm | gdm3
 Description: Metapacote do ambiente de desktop completo do Lumen OS
  Metapacote completo que reúne todos os componentes do Lumen OS:

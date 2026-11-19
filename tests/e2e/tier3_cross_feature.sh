@@ -307,7 +307,7 @@ need("lumen-compositor", "hyprpolkitagent")
 # a janela de senha (o pacote do Ubuntu não declara essa dependência).
 need("lumen-compositor", "qt6-wayland")
 # Mandacaru (EDR) com eBPF vem por padrão no desktop.
-need("lumen-desktop", "mandacaru (>= 0.3.0)")
+need("lumen-desktop", "mandacaru (>= 0.4.0)")
 need("lumen-desktop", "python3-bpfcc")
 # Aviso sonoro e popup dos alertas do Mandacaru: áudio, notificação e tema de sons.
 for dep in ("pipewire", "pipewire-pulse", "wireplumber", "mako-notifier", "libnotify-bin",
@@ -370,6 +370,13 @@ assert_contains "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "^exec-onc
 assert_contains "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf" "^exec-once = python3 -m shell\.edr_notify$" "Vigia de desenvolvimento sobe na sessão"
 test_case_end
 
+test_case_start "T3_PAIR9_JANELA_QUARENTENA_FLUTUANTE" "Os dois hyprland.conf abrem a janela da quarentena flutuante e no centro"
+for conf in "${WORKSPACE_ROOT}/packaging/templates/hyprland.conf" "${WORKSPACE_ROOT}/compositor/hyprland/hyprland.conf"; do
+    assert_contains "$conf" "^windowrule = float on, match:class io\.github\.vandyckln\.lumen\.quarentena$" "Janela da quarentena flutuante ($conf)"
+    assert_contains "$conf" "^windowrule = center on, match:class io\.github\.vandyckln\.lumen\.quarentena$" "Janela da quarentena centralizada ($conf)"
+done
+test_case_end
+
 test_case_start "T3_PAIR9_PACOTE_INSTALA_VIGIA" "build-debs.sh instala o lumen-edr-notify em /usr/bin no lumen-shell"
 vig_out="$(python3 -I - "${WORKSPACE_ROOT}/packaging/build-debs.sh" <<'PYEOF' 2>&1
 import sys
@@ -424,6 +431,29 @@ print("ok" if not erros else "; ".join(erros))
 PYEOF
 )"
 assert_eq "ok" "$guard_out" "ISO nunca sai com o EDR velho ou sem o aviso"
+test_case_end
+
+test_case_start "T3_PAIR9_LOCK_ATENDE_DEPENDS" "O Mandacaru do lock atende o mínimo exigido pelo lumen-desktop"
+# Depends acima do lock = apt-get install -y lumen-desktop insatisfeito e ISO que não monta.
+lockdep_out="$(python3 -I - "${WORKSPACE_ROOT}" <<'PYEOF' 2>&1
+import re
+import sys
+root = sys.argv[1]
+lock = open(f"{root}/packaging/third-party/mandacaru.lock", encoding="utf-8").read()
+m = re.search(r"^MANDACARU_VERSION=([0-9.]+)$", lock, re.M)
+ver = tuple(int(x) for x in m.group(1).split(".")) if m else None
+erros = []
+for arq in ("packaging/build-debs.sh", "packaging/debian/control"):
+    mins = re.findall(r"mandacaru \(>= ([0-9.]+)\)", open(f"{root}/{arq}", encoding="utf-8").read())
+    if not mins:
+        erros.append(f"{arq}: sem mandacaru (>= ...)")
+    for v in mins:
+        if ver is None or ver < tuple(int(x) for x in v.split(".")):
+            erros.append(f"{arq}: exige {v}, lock tem {m.group(1) if m else 'nada'}")
+print("ok" if not erros else "; ".join(erros))
+PYEOF
+)"
+assert_eq "ok" "$lockdep_out" "Lock e Depends coerentes"
 test_case_end
 
 test_case_start "T3_PAIR9_USERMOD_FORA_DO_IF" "A live entra no grupo mandacaru mesmo com usuário já existente"

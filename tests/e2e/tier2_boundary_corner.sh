@@ -771,7 +771,7 @@ som_aviso="pw-play /usr/share/sounds/freedesktop/stereo/dialog-warning\.oga"
 # T2-F9-01
 test_case_start "T2_F9_01" "Alerta HIGH gera popup crítico e o som de alarme"
 run_edr high
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: Shell bash com conexao de rede ativa" "Popup crítico do HIGH"
 assert_contains "$LAST_CMD_OUTPUT" "$som_alarme" "Som de alarme no HIGH"
 assert_not_contains "$LAST_CMD_OUTPUT" "expire-time" "HIGH fica na tela até ser fechado"
 test_case_end
@@ -779,7 +779,7 @@ test_case_end
 # T2-F9-02
 test_case_start "T2_F9_02" "Alerta MEDIUM gera popup normal e o som de aviso"
 run_edr medium
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=normal --expire-time=10000 --wait --action=default=Silenciar -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=normal --expire-time=10000 --wait --action=default=Silenciar -- Mandacaru: MEDIUM" "Popup normal do MEDIUM some sozinho em 10 s"
 assert_contains "$LAST_CMD_OUTPUT" "$som_aviso" "Som de aviso no MEDIUM"
 test_case_end
 
@@ -825,7 +825,7 @@ test_case_end
 # T2-F9-09
 test_case_start "T2_F9_09" "Resumo começando com traço não vira opção do notify-send"
 run_edr traco
-assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=Silenciar -- Mandacaru: HIGH behavior\.revshell: -x perigo" "Argumentos depois do --"
 test_case_end
 
 # T2-F9-10
@@ -883,6 +883,187 @@ test_case_end
 test_case_start "T2_F9_18" "Processos filhos que terminam são recolhidos (sem zumbis)"
 run_edr zumbi
 assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=[0-9]+ zumbis=0" "Nenhum pw-play ou notify-send zumbi"
+test_case_end
+
+# T2-F9-19
+test_case_start "T2_F9_19" "Clique num alerta com id abre a janela de decisão"
+run_edr id_clique
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=O que fazer\? -- Mandacaru: arquivo isolado \(HIGH\) behavior\.revshell: " "Popup do arquivo isolado"
+assert_contains "$LAST_CMD_OUTPUT" "lumen-quarentena abababababababababababababababab --rule=behavior\.revshell --summary=Shell bash com conexao de rede ativa" "Janela aberta com id, regra e resumo"
+test_case_end
+
+# T2-F9-20
+test_case_start "T2_F9_20" "Popup dispensado ou expirado (stdout vazio) não abre a janela"
+run_edr dismiss
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela"
+assert_contains "$LAST_CMD_OUTPUT" "anunciados=0" "Fechou sem clique: o caso não fica marcado como anunciado"
+test_case_end
+
+# T2-F9-21
+test_case_start "T2_F9_21" "quarantine_id inválido vira popup comum, sem janela"
+run_edr id_invalido
+assert_eq "2" "$(conta 'action=default=Silenciar -- Mandacaru: HIGH')" "Os dois saem como popup comum"
+assert_contains "$LAST_CMD_OUTPUT" "anunciados=0" "Id inválido não entra no conjunto de anunciados"
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela"
+test_case_end
+
+# T2-F9-22
+test_case_start "T2_F9_22" "Resumo com markup e traço: escapado no popup, cru na janela"
+run_edr id_markup
+assert_contains "$LAST_CMD_OUTPUT" "Tom &amp; &lt;b&gt;y&lt;/b&gt;" "Corpo do popup escapado"
+assert_contains "$LAST_CMD_OUTPUT" "--summary=-x Tom & <b>y</b>" "Janela recebe o texto cru"
+assert_contains "$LAST_CMD_OUTPUT" "dialog_parse=abababababababababababababababab\|behavior\.revshell\|-x Tom & <b>y</b>" "O argparse da janela aceita o argv e devolve o resumo intacto"
+test_case_end
+
+# T2-F9-23
+test_case_start "T2_F9_23" "Resumo sem espaço começando com traço chega inteiro à janela"
+run_edr id_traco
+assert_contains "$LAST_CMD_OUTPUT" "dialog_parse=abababababababababababababababab\|behavior\.revshell\|--help" "Nada de 'expected one argument'"
+test_case_end
+
+# T2-F9-24
+test_case_start "T2_F9_24" "MEDIUM com id segue expirando em 10 s"
+run_edr id_medium
+assert_contains "$LAST_CMD_OUTPUT" "--urgency=normal --expire-time=10000 --wait --action=default=O que fazer\? -- Mandacaru: arquivo isolado \(MEDIUM\)" "Título e expire do MEDIUM"
+test_case_end
+
+# T2-F9-25
+test_case_start "T2_F9_25" "Clique num alerta sem id não abre a janela"
+run_edr clique
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Alerta sem id só silencia"
+test_case_end
+
+# T2-F9-26
+test_case_start "T2_F9_26" "Alerta com id válido abaixo do limiar ainda avisa e abre a janela no clique"
+run_edr id_abaixo_limiar
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado \(LOW\)')" "Popup do isolado apesar do limiar CRITICAL"
+assert_eq "1" "$(conta '^lumen-quarentena ')" "Clique abre a janela"
+test_case_end
+
+# T2-F9-27
+test_case_start "T2_F9_27" "Alerta sem id abaixo do limiar continua quieto"
+run_edr sem_id_abaixo_limiar
+assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "LOW sem id com limiar CRITICAL"
+test_case_end
+
+# T2-F9-28
+test_case_start "T2_F9_28" "Dois alertas com o mesmo id geram um popup só"
+run_edr id_repetido
+assert_eq "1" "$(conta '^notify-send ')" "Um popup por caso"
+assert_eq "1" "$(conta '^lumen-quarentena ')" "Uma janela por caso"
+test_case_end
+
+# T2-F9-29
+test_case_start "T2_F9_29" "Popup do caso que fechou sem clique: novo alerta do mesmo id pergunta de novo"
+run_edr id_reabre
+assert_eq "2" "$(conta '^notify-send .*arquivo isolado')" "Segundo popup depois do fechamento"
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela sem clique"
+test_case_end
+
+# T2-F9-30
+test_case_start "T2_F9_30" "Popup clicado: o mesmo id não pergunta de novo"
+run_edr id_clicado_nao_reabre
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado')" "Um popup só"
+assert_eq "1" "$(conta '^lumen-quarentena ')" "Uma janela"
+test_case_end
+
+# T2-F9-31
+test_case_start "T2_F9_31" "Mesmo id com severidade maior anuncia de novo, uma vez por nível"
+run_edr id_sobe
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado \(LOW\)')" "LOW anunciado uma vez"
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado \(CRITICAL\)')" "CRITICAL anunciado uma vez, mesmo depois do LOW"
+assert_eq "2" "$(conta '^notify-send ')" "Nem o CRITICAL repetido nem o LOW de volta geram popup"
+test_case_end
+
+# T2-F9-32
+test_case_start "T2_F9_32" "Sem notify-send o id não fica marcado como anunciado"
+run_edr id_sem_notify
+assert_contains "$LAST_CMD_OUTPUT" "anunciados=0" "Popup que não iniciou não consome o caso"
+test_case_end
+
+# ==============================================================================
+# FUNCIONALIDADE F10: Lógica da janela de decisão da quarentena (sem GTK)
+# ==============================================================================
+qd_harness="${WORKSPACE_ROOT}/tests/e2e/fixtures/quarantine_dialog_harness.py"
+
+# T2-F10-01
+test_case_start "T2_F10_01" "Botões chamam o pkexec certo, em lista e sem shell"
+assert_exit_code 0 python3 "$qd_harness" commands
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-02
+test_case_start "T2_F10_02" "Só id de 32 hex minúsculos é válido"
+assert_exit_code 0 python3 "$qd_harness" valid_id
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-03
+test_case_start "T2_F10_03" "Confio e Manter com sucesso mostram a mensagem e fecham"
+assert_exit_code 0 python3 "$qd_harness" outcome_ok
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-04
+test_case_start "T2_F10_04" "Analisar mostra o veredito e deixa Confio e Manter"
+assert_exit_code 0 python3 "$qd_harness" outcome_analisar
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-05
+test_case_start "T2_F10_05" "Análise com JSON ruim, versão ou veredito desconhecido falha sem trocar botões"
+assert_exit_code 0 python3 "$qd_harness" outcome_analisar_ruim
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-06
+test_case_start "T2_F10_06" "Códigos 3, 4, 126, 127 e outros viram a mensagem certa"
+assert_exit_code 0 python3 "$qd_harness" outcome_codigos
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-07
+test_case_start "T2_F10_07" "Sem pkexec a janela manda o comando para o terminal"
+assert_exit_code 0 python3 "$qd_harness" spawn_failed
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-08
+test_case_start "T2_F10_08" "Argumentos preservam o resumo e recusam id inválido"
+assert_exit_code 0 python3 "$qd_harness" args
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-09
+test_case_start "T2_F10_09" "Segunda janela do mesmo caso sai sem abrir"
+assert_exit_code 0 python3 "$qd_harness" trava
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-10
+test_case_start "T2_F10_10" "O módulo da janela não importa gi no topo"
+assert_exit_code 0 python3 "$qd_harness" sem_gi
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-11
+test_case_start "T2_F10_11" "Confio sem saída não deixa espaço sobrando; v true não vale como 1"
+assert_exit_code 0 python3 "$qd_harness" outcome_bordas
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-12
+test_case_start "T2_F10_12" "Análise com saída vazia, JSON que não é objeto ou rc diferente de 0 falha sem trocar botões"
+assert_exit_code 0 python3 "$qd_harness" analisar_bordas
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+assert_contains "$LAST_CMD_OUTPUT" "ok stdout_vazio_msg" "As verificações rodaram"
+test_case_end
+
+# T2-F10-13
+test_case_start "T2_F10_13" "Trava sem XDG_RUNTIME_DIR cai em /run/user/uid; id hostil em main() sai com 2 sem janela"
+assert_exit_code 0 python3 "$qd_harness" main_bordas
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+assert_contains "$LAST_CMD_OUTPUT" "ok main_sem_janela" "As verificações rodaram"
 test_case_end
 
 # Finaliza a suíte
