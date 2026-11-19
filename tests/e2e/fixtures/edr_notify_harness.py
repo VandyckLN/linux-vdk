@@ -26,6 +26,8 @@ def alerta(sev="HIGH", summary="Shell bash com conexao de rede ativa", **extra):
     return (json.dumps(d, ensure_ascii=False) + "\n").encode()
 
 
+ID = "ab" * 16
+
 CASOS = {
     # caso: (linhas enviadas, min_severity)
     "high": ([alerta()], "MEDIUM"),
@@ -41,6 +43,12 @@ CASOS = {
     "pwplay_trava": ([alerta()], "MEDIUM"),
     "popup_falha": ([alerta()], "MEDIUM"),
     "zumbi": ([alerta("MEDIUM")], "MEDIUM"),
+    # alertas da Mandacaru 0.4.0 com quarantine_id (arquivo isolado)
+    "id_clique": ([alerta(quarantine_id=ID)], "MEDIUM"),
+    "dismiss": ([alerta(quarantine_id=ID)], "MEDIUM"),
+    "id_invalido": ([alerta(quarantine_id="../../etc"), alerta(quarantine_id="AB" * 16)], "MEDIUM"),
+    "id_markup": ([alerta(summary="-x Tom & <b>y</b>", quarantine_id=ID)], "MEDIUM"),
+    "id_medium": ([alerta("MEDIUM", quarantine_id=ID)], "MEDIUM"),
 }
 
 # Como os falsos se comportam em cada caso. Padrão: o popup fica aberto 3 s (como um
@@ -49,10 +57,16 @@ CASOS = {
 #   NOTIFY_RC: notify-send falha na hora com esse código (sem daemon de notificação)
 #   PWPLAY_SLEEP: segundos que o pw-play leva (30 = travado, como na VM)
 AMBIENTE = {
-    "clique": {"NOTIFY_SLEEP": "0.1", "PWPLAY_SLEEP": "5"},
+    "clique": {"NOTIFY_SLEEP": "0.1", "PWPLAY_SLEEP": "5", "NOTIFY_OUT": "default"},
     "pwplay_trava": {"PWPLAY_SLEEP": "30"},
     "popup_falha": {"NOTIFY_RC": "1"},
     "zumbi": {"NOTIFY_SLEEP": "0.5"},
+    # NOTIFY_OUT: o que o notify-send imprime ao fechar ("default" = clique na ação)
+    "id_clique": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "dismiss": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": ""},
+    "id_invalido": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "id_markup": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "id_medium": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
 }
 # teto de cada pw-play no harness; no clique ele é alto para provar que quem parou foi o clique
 TETO = {"clique": 5.0}
@@ -70,9 +84,16 @@ def fakes(base, com_pwplay=True):
         with open(p, "w") as fh:
             fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n'
                      f'echo $$ >> "{base}/{nome}.pids"\n'
+                     + ('[ -n "$NOTIFY_OUT" ] && printf \'%s\\n\' "$NOTIFY_OUT"\n' if nome == "notify-send" else "") +
                      f'[ -n "${var[nome]}_RC" ] && exit "${var[nome]}_RC"\n'
                      f'exec /bin/sleep "${{{var[nome]}_SLEEP:-0}}"\n')
         os.chmod(p, 0o755)
+    # janela de decisão falsa: só registra a chamada
+    dlg = os.path.join(bindir, "lumen-quarentena")
+    with open(dlg, "w") as fh:
+        fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n')
+    os.chmod(dlg, 0o755)
+    edr_notify.DIALOG_CMD = [dlg]
     os.environ["PATH"] = bindir  # so os falsos: um pw-play real do host nao pode atrapalhar
     return log
 

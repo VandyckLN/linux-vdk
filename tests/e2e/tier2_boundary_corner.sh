@@ -885,6 +885,45 @@ run_edr zumbi
 assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=[0-9]+ zumbis=0" "Nenhum pw-play ou notify-send zumbi"
 test_case_end
 
+# T2-F9-19
+test_case_start "T2_F9_19" "Clique num alerta com id abre a janela de decisão"
+run_edr id_clique
+assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=O que fazer\? -- Mandacaru: arquivo isolado \(HIGH\) behavior\.revshell: " "Popup do arquivo isolado"
+assert_contains "$LAST_CMD_OUTPUT" "lumen-quarentena abababababababababababababababab --rule behavior\.revshell --summary Shell bash com conexao de rede ativa" "Janela aberta com id, regra e resumo"
+test_case_end
+
+# T2-F9-20
+test_case_start "T2_F9_20" "Popup dispensado ou expirado (stdout vazio) não abre a janela"
+run_edr dismiss
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela"
+test_case_end
+
+# T2-F9-21
+test_case_start "T2_F9_21" "quarantine_id inválido vira popup comum, sem janela"
+run_edr id_invalido
+assert_eq "2" "$(conta 'action=default=Silenciar -- Mandacaru: HIGH')" "Os dois saem como popup comum"
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Nenhuma janela"
+test_case_end
+
+# T2-F9-22
+test_case_start "T2_F9_22" "Resumo com markup e traço: escapado no popup, cru na janela"
+run_edr id_markup
+assert_contains "$LAST_CMD_OUTPUT" "Tom &amp; &lt;b&gt;y&lt;/b&gt;" "Corpo do popup escapado"
+assert_contains "$LAST_CMD_OUTPUT" "--summary -x Tom & <b>y</b>" "Janela recebe o texto cru"
+test_case_end
+
+# T2-F9-23
+test_case_start "T2_F9_23" "MEDIUM com id segue expirando em 10 s"
+run_edr id_medium
+assert_contains "$LAST_CMD_OUTPUT" "--urgency=normal --expire-time=10000 --wait --action=default=O que fazer\? -- Mandacaru: arquivo isolado \(MEDIUM\)" "Título e expire do MEDIUM"
+test_case_end
+
+# T2-F9-24
+test_case_start "T2_F9_24" "Clique num alerta sem id não abre a janela"
+run_edr clique
+assert_eq "0" "$(conta '^lumen-quarentena ')" "Alerta sem id só silencia"
+test_case_end
+
 # ==============================================================================
 # FUNCIONALIDADE F10: Lógica da janela de decisão da quarentena (sem GTK)
 # ==============================================================================

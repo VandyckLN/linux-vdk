@@ -18,6 +18,8 @@ import threading
 import time
 from typing import Any
 
+from .quarantine_dialog import valid_id
+
 SEVERITIES = ("INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL")
 SOUND_REPEATS = 3  # toques por ocorrência; o clique no popup para antes
 SOUND_GAP = 1.0  # pausa entre um toque e outro
@@ -33,6 +35,9 @@ SOUNDS = {
     "HIGH": "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga",
     "CRITICAL": "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga",
 }
+
+# janela de decisão da quarentena (o harness troca por um falso)
+DIALOG_CMD: list[str] = [sys.executable, "-m", "shell.quarantine_dialog"]
 
 _children: list[subprocess.Popen] = []
 _ringing = threading.Event()  # um toque por vez: alerta novo durante um toque não sobrepõe
@@ -68,18 +73,18 @@ def _reap() -> None:
     _children[:] = [p for p in _children if p.poll() is None]
 
 
-def _popen(cmd: list[str]) -> subprocess.Popen | None:
+def _popen(cmd: list[str], stdout: int = subprocess.DEVNULL) -> subprocess.Popen | None:
     try:
         return subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                stdout=stdout, stderr=subprocess.DEVNULL)
     except OSError as exc:
         _warn_once(cmd[0], f"não foi possível rodar {cmd[0]}: {exc.strerror or exc}")
         return None
 
 
-def _spawn(cmd: list[str]) -> subprocess.Popen | None:
+def _spawn(cmd: list[str], stdout: int = subprocess.DEVNULL) -> subprocess.Popen | None:
     """Dispara sem esperar: um notify-send travado não pode congelar a leitura do socket."""
-    proc = _popen(cmd)
+    proc = _popen(cmd, stdout)
     if proc is not None:
         _children.append(proc)
     return proc
@@ -113,6 +118,19 @@ def _ring(sound: str, max_play: float, popup: subprocess.Popen | None) -> None:
         _ringing.clear()
 
 
+def _open_on_click(popup: subprocess.Popen, case_id: str, rule: str, summary: str) -> None:
+    """Espera o popup fechar; só a saída exata "default" (clique na ação) abre a janela."""
+    try:
+        out = popup.stdout.read()
+        popup.wait()  # recolhe o notify-send
+    except (OSError, ValueError):
+        return
+    finally:
+        popup.stdout.close()
+    if out.decode(errors="replace").strip() == "default":
+        _spawn([*DIALOG_CMD, case_id, "--rule", rule, "--summary", summary])
+
+
 def notify(alert: dict, sound_enabled: bool) -> None:
     _reap()
     sev = alert["severity"]
@@ -125,8 +143,18 @@ def notify(alert: dict, sound_enabled: bool) -> None:
     body = html.escape(f"{alert['rule']}: {alert['summary']}", quote=False)
     # --wait com ação padrão: o notify-send só termina quando o popup fecha (clique ou
     # expirou), e é isso que para o som. "--": um resumo começando com "-" não vira opção.
-    popup = _spawn(["notify-send", "--app-name=Mandacaru", "--icon=mandacaru", *opts, "--wait",
-                    "--action=default=Silenciar", "--", f"Mandacaru: {sev}", body])
+    case_id = alert.get("quarantine_id")
+    if valid_id(case_id):
+        # arquivo isolado: o clique abre a janela de decisão, então lemos o stdout do popup
+        popup = _spawn(["notify-send", "--app-name=Mandacaru", "--icon=mandacaru", *opts, "--wait",
+                        "--action=default=O que fazer?", "--", f"Mandacaru: arquivo isolado ({sev})", body],
+                       stdout=subprocess.PIPE)
+        if popup is not None:
+            threading.Thread(target=_open_on_click, args=(popup, case_id, alert["rule"], alert["summary"]),
+                             daemon=True).start()
+    else:
+        popup = _spawn(["notify-send", "--app-name=Mandacaru", "--icon=mandacaru", *opts, "--wait",
+                        "--action=default=Silenciar", "--", f"Mandacaru: {sev}", body])
     if sound_enabled and sev in SOUNDS and not _ringing.is_set():
         _ringing.set()
         threading.Thread(target=_ring, args=(SOUNDS[sev], SOUND_MAX[sev], popup), daemon=True).start()
