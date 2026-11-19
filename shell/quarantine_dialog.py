@@ -51,6 +51,14 @@ def _last_line(text: str) -> str:
     return lines[-1] if lines else ""
 
 
+def decode_output(data: bytes | None) -> str:
+    """Saída do filho em texto; bytes fora de UTF-8 (nomes de arquivo) viram U+FFFD."""
+    if data is None:
+        return ""
+    raw = data.get_data() if hasattr(data, "get_data") else data  # GLib.Bytes ou bytes
+    return bytes(raw or b"").decode("utf-8", "replace")
+
+
 def _failed(rc: int, stderr: str, current: tuple[str, ...]) -> Outcome:
     message = f"Falhou (código {rc})."
     detail = _last_line(stderr)
@@ -178,7 +186,7 @@ def run_window(args: argparse.Namespace) -> int:
             buttons[action] = button
         window.set_default_widget(buttons["manter"])
 
-        state = {"current": INITIAL_BUTTONS}
+        state = {"current": INITIAL_BUTTONS, "pending": False}
 
         def close_window():
             window.close()
@@ -198,12 +206,30 @@ def run_window(args: argparse.Namespace) -> int:
                 GLib.timeout_add(CLOSE_MS, close_window)
 
         def on_done(proc, res, action, before):
+            state["pending"] = False
             try:
-                _ok, out, err = proc.communicate_utf8_finish(res)
-                rc = proc.get_exit_status() if proc.get_if_exited() else -1
-            except GLib.Error:
-                out, err, rc = "", "", -1
-            apply(outcome(action, rc, out or "", err or "", before))
+                try:
+                    _ok, out, err = proc.communicate_finish(res)
+                    rc = proc.get_exit_status() if proc.get_if_exited() else -1
+                except GLib.Error:
+                    out, err, rc = None, None, -1
+                result = outcome(action, rc, decode_output(out), decode_output(err), before)
+            except Exception as exc:  # nunca deixar a janela travada em "Aguardando…"
+                result = _failed(-1, str(exc), before)
+            finally:
+                app.release()
+            if window.get_visible():
+                apply(result)
+            else:
+                app.quit()  # janela fechada no meio do comando: o comando terminou, sai
+
+        def on_close(_window):
+            if state["pending"]:
+                window.set_visible(False)  # esconde e segura a trava até o comando acabar
+                return True
+            return False
+
+        window.connect("close-request", on_close)
 
         def on_click(_button, action):
             before = state["current"]
@@ -219,7 +245,9 @@ def run_window(args: argparse.Namespace) -> int:
             except GLib.Error:
                 apply(spawn_failed(action, args.id, before))
                 return
-            proc.communicate_utf8_async(None, None, on_done, action, before)
+            state["pending"] = True
+            app.hold()
+            proc.communicate_async(None, None, on_done, action, before)
 
         for action, button in buttons.items():
             button.connect("clicked", on_click, action)
