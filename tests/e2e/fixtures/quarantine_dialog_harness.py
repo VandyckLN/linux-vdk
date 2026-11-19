@@ -130,6 +130,14 @@ def caso_trava():
         check("livre_abre", "abriu" in r.stdout, True)
 
 
+def caso_outcome_bordas():
+    o = qd.outcome("confiar", 0, "", "", qd.INITIAL_BUTTONS)
+    check("confiar_sem_saida", o.message, "Arquivo devolvido.")
+    o = qd.outcome("analisar", 0, analise("malicioso", v=True), "", qd.INITIAL_BUTTONS)
+    check("v_true_msg", o.message.startswith("Falhou (código 0)"), True)
+    check("v_true_botoes", o.buttons, qd.INITIAL_BUTTONS)
+
+
 def caso_sem_gi():
     r = subprocess.run([sys.executable, "-c",
                         "import sys; sys.path.insert(0, %r); import shell.quarantine_dialog; "

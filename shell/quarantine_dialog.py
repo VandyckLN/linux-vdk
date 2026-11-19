@@ -79,7 +79,8 @@ def outcome(action: str, rc: int, stdout: str, stderr: str,
     if rc != 0:
         return _failed(rc, stderr, current)
     if action == "confiar":
-        return Outcome(f"Arquivo devolvido. {_last_line(stdout)}", (), True)
+        last = _last_line(stdout)
+        return Outcome(f"Arquivo devolvido. {last}" if last else "Arquivo devolvido.", (), True)
     if action == "manter":
         return Outcome("Mantido isolado. Será apagado em 30 dias.", (), True)
     if action == "analisar":
@@ -87,7 +88,7 @@ def outcome(action: str, rc: int, stdout: str, stderr: str,
             data = json.loads(stdout)
         except ValueError:
             return _failed(rc, stderr, current)
-        if (not isinstance(data, dict) or data.get("v") != 1
+        if (not isinstance(data, dict) or type(data.get("v")) is not int or data["v"] != 1
                 or not isinstance(data.get("verdict"), str)
                 or data["verdict"] not in VERDICTS):
             return _failed(rc, stderr, current)
@@ -172,7 +173,7 @@ def run_window(args: argparse.Namespace) -> int:
         make_label(args.rule)
         make_label(args.summary, selectable=True)
         make_label("Se você não decidir, o arquivo é apagado em 30 dias.")
-        status = make_label("")
+        status = make_label("", selectable=True)  # o aviso do pkexec traz um comando para copiar
         spinner = Gtk.Spinner()
         box.append(spinner)
 
@@ -185,6 +186,7 @@ def run_window(args: argparse.Namespace) -> int:
             row.append(button)
             buttons[action] = button
         window.set_default_widget(buttons["manter"])
+        buttons["manter"].add_css_class("suggested-action")
 
         state = {"current": INITIAL_BUTTONS, "pending": False}
 
@@ -245,12 +247,18 @@ def run_window(args: argparse.Namespace) -> int:
             except GLib.Error:
                 apply(spawn_failed(action, args.id, before))
                 return
+            # closure em vez de user_data variádico do PyGObject (mais previsível)
+            try:
+                proc.communicate_async(None, None, lambda p, r: on_done(p, r, action, before))
+            except Exception as exc:  # erro síncrono: reabilita os botões, sem segurar o app
+                apply(_failed(-1, str(exc), before))
+                return
             state["pending"] = True
             app.hold()
-            proc.communicate_async(None, None, on_done, action, before)
 
         for action, button in buttons.items():
             button.connect("clicked", on_click, action)
+        buttons["manter"].grab_focus()  # senão o foco cai no resumo selecionável (texto todo marcado)
         window.present()
 
     app = Gtk.Application(application_id="io.github.vandyckln.lumen.quarentena",
