@@ -1052,5 +1052,19 @@ assert_exit_code 0 python3 "$qd_harness" outcome_bordas
 assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
 test_case_end
 
+# T2-F10-12
+test_case_start "T2_F10_12" "Análise com saída vazia, JSON que não é objeto ou rc diferente de 0 falha sem trocar botões"
+assert_exit_code 0 python3 "$qd_harness" analisar_bordas
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+assert_contains "$LAST_CMD_OUTPUT" "ok stdout_vazio_msg" "As verificações rodaram"
+test_case_end
+
+# T2-F10-13
+test_case_start "T2_F10_13" "Trava sem XDG_RUNTIME_DIR cai em /run/user/uid; id hostil em main() sai com 2 sem janela"
+assert_exit_code 0 python3 "$qd_harness" main_bordas
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+assert_contains "$LAST_CMD_OUTPUT" "ok main_sem_janela" "As verificações rodaram"
+test_case_end
+
 # Finaliza a suíte
 suite_finish

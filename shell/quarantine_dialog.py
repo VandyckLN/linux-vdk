@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import traceback
 from dataclasses import dataclass
 
 CASE_ID = re.compile(r"[0-9a-f]{32}")
@@ -161,7 +162,9 @@ def run_window(args: argparse.Namespace) -> int:
             getattr(box, f"set_margin_{side}")(18)
         window.set_child(box)
 
-        def make_label(text, selectable=False):
+        def make_label(text, selectable=False, keep=False):
+            if not text and not keep:
+                return None  # texto vazio ocuparia espaço (e o spacing da caixa) à toa
             label = Gtk.Label()
             label.set_text(text)
             label.set_wrap(True)
@@ -173,8 +176,10 @@ def run_window(args: argparse.Namespace) -> int:
         make_label(args.rule)
         make_label(args.summary, selectable=True)
         make_label("Se você não decidir, o arquivo é apagado em 30 dias.")
-        status = make_label("", selectable=True)  # o aviso do pkexec traz um comando para copiar
+        status = make_label("", selectable=True, keep=True)  # o aviso do pkexec traz um comando para copiar
+        status.set_visible(False)  # vazio até o primeiro comando
         spinner = Gtk.Spinner()
+        spinner.set_visible(False)  # só aparece enquanto um comando roda
         box.append(spinner)
 
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -196,7 +201,9 @@ def run_window(args: argparse.Namespace) -> int:
 
         def apply(result):
             spinner.stop()
+            spinner.set_visible(False)
             status.set_text(result.message)
+            status.set_visible(True)
             if result.verdict == "malicioso":
                 status.add_css_class("malicioso")
             else:
@@ -237,9 +244,11 @@ def run_window(args: argparse.Namespace) -> int:
             before = state["current"]
             for button in buttons.values():
                 button.set_sensitive(False)
+            spinner.set_visible(True)
             spinner.start()
             status.remove_css_class("malicioso")
             status.set_text("Aguardando…")
+            status.set_visible(True)
             try:
                 proc = Gio.Subprocess.new(
                     cmds[action],
@@ -251,6 +260,10 @@ def run_window(args: argparse.Namespace) -> int:
             try:
                 proc.communicate_async(None, None, lambda p, r: on_done(p, r, action, before))
             except Exception as exc:  # erro síncrono: reabilita os botões, sem segurar o app
+                try:
+                    proc.force_exit()  # o filho já existe e ninguém vai esperar por ele
+                except Exception:
+                    pass
                 apply(_failed(-1, str(exc), before))
                 return
             state["pending"] = True
@@ -261,10 +274,21 @@ def run_window(args: argparse.Namespace) -> int:
         buttons["manter"].grab_focus()  # senão o foco cai no resumo selecionável (texto todo marcado)
         window.present()
 
+    failure = []  # o GLib engole exceção de callback: sem isso o app sairia 0 sem janela
+
+    def safe_activate(app):
+        try:
+            on_activate(app)
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            failure.append(1)
+            app.quit()
+
     app = Gtk.Application(application_id="io.github.vandyckln.lumen.quarentena",
                           flags=Gio.ApplicationFlags.NON_UNIQUE)
-    app.connect("activate", on_activate)
-    return app.run([])
+    app.connect("activate", safe_activate)
+    code = app.run([])
+    return 1 if failure else code
 
 
 def main(argv: list[str] | None = None) -> int:

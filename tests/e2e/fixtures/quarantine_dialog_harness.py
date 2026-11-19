@@ -138,6 +138,36 @@ def caso_outcome_bordas():
     check("v_true_botoes", o.buttons, qd.INITIAL_BUTTONS)
 
 
+def caso_analisar_bordas():
+    cur = qd.INITIAL_BUTTONS
+    for nome, saida in [("stdout_vazio", ""), ("json_lista", "[]")]:
+        o = qd.outcome("analisar", 0, saida, "", cur)
+        check(nome + "_msg", o.message, "Falhou (código 0).")
+        check(nome + "_botoes", (o.buttons, o.close), (cur, False))
+    o = qd.outcome("analisar", 1, analise("malicioso"), "x\nerro y\n", cur)
+    check("rc1_json_valido_msg", o.message, "Falhou (código 1).\nerro y")
+    check("rc1_json_valido_resto", (o.buttons, o.close, o.verdict), (cur, False, None))
+
+
+def caso_main_bordas():
+    runtime = os.environ.pop("XDG_RUNTIME_DIR", None)
+    check("lock_sem_xdg", qd.lock_path(ID), f"/run/user/{os.getuid()}/lumen-quarentena-{ID}.lock")
+    os.environ["XDG_RUNTIME_DIR"] = ""
+    check("lock_xdg_vazio", qd.lock_path(ID), f"/run/user/{os.getuid()}/lumen-quarentena-{ID}.lock")
+    if runtime is not None:
+        os.environ["XDG_RUNTIME_DIR"] = runtime
+    # id hostil direto em main(): recusado pelo argparse antes de trava ou janela
+    chamou = []
+    qd.run_window = lambda a: chamou.append(a) or 0
+    for nome, hostil in [("traversal", "../../etc"), ("maiuscula", "A" * 32), ("flag", "--rule=x")]:
+        try:
+            rc = qd.main([hostil])
+            check("main_" + nome, ("sem erro", rc), "SystemExit(2)")
+        except SystemExit as e:
+            check("main_" + nome, e.code, 2)
+    check("main_sem_janela", chamou, [])
+
+
 def caso_sem_gi():
     r = subprocess.run([sys.executable, "-c",
                         "import sys; sys.path.insert(0, %r); import shell.quarantine_dialog; "
