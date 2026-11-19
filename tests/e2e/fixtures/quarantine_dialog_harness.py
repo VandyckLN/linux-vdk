@@ -74,7 +74,9 @@ def caso_outcome_analisar():
 
 def caso_outcome_analisar_ruim():
     for nome, saida in [("quebrado", "{quebrado"), ("versao", analise("malicioso", v=2)),
-                        ("veredito", json.dumps({"v": 1, "verdict": "talvez"}))]:
+                        ("veredito", json.dumps({"v": 1, "verdict": "talvez"})),
+                        ("lista", json.dumps({"v": 1, "verdict": ["x"]})),
+                        ("dict", json.dumps({"v": 1, "verdict": {"a": 1}}))]:
         o = qd.outcome("analisar", 0, saida, "", qd.INITIAL_BUTTONS)
         check(nome + "_msg", o.message.startswith("Falhou (código 0)"), True)
         check(nome + "_botoes", o.buttons, qd.INITIAL_BUTTONS)

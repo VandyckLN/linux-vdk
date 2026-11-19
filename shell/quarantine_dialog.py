@@ -80,7 +80,8 @@ def outcome(action: str, rc: int, stdout: str, stderr: str,
         except ValueError:
             return _failed(rc, stderr, current)
         if (not isinstance(data, dict) or data.get("v") != 1
-                or data.get("verdict") not in VERDICTS):
+                or not isinstance(data.get("verdict"), str)
+                or data["verdict"] not in VERDICTS):
             return _failed(rc, stderr, current)
         verdict = data["verdict"]
         message = VERDICTS[verdict]
