@@ -885,5 +885,70 @@ run_edr zumbi
 assert_contains "$LAST_CMD_OUTPUT" "pwplay_vivos=[0-9]+ zumbis=0" "Nenhum pw-play ou notify-send zumbi"
 test_case_end
 
+# ==============================================================================
+# FUNCIONALIDADE F10: Lógica da janela de decisão da quarentena (sem GTK)
+# ==============================================================================
+qd_harness="${WORKSPACE_ROOT}/tests/e2e/fixtures/quarantine_dialog_harness.py"
+
+# T2-F10-01
+test_case_start "T2_F10_01" "Botões chamam o pkexec certo, em lista e sem shell"
+assert_exit_code 0 python3 "$qd_harness" commands
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-02
+test_case_start "T2_F10_02" "Só id de 32 hex minúsculos é válido"
+assert_exit_code 0 python3 "$qd_harness" valid_id
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-03
+test_case_start "T2_F10_03" "Confio e Manter com sucesso mostram a mensagem e fecham"
+assert_exit_code 0 python3 "$qd_harness" outcome_ok
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-04
+test_case_start "T2_F10_04" "Analisar mostra o veredito e deixa Confio e Manter"
+assert_exit_code 0 python3 "$qd_harness" outcome_analisar
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-05
+test_case_start "T2_F10_05" "Análise com JSON ruim, versão ou veredito desconhecido falha sem trocar botões"
+assert_exit_code 0 python3 "$qd_harness" outcome_analisar_ruim
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-06
+test_case_start "T2_F10_06" "Códigos 3, 4, 126, 127 e outros viram a mensagem certa"
+assert_exit_code 0 python3 "$qd_harness" outcome_codigos
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-07
+test_case_start "T2_F10_07" "Sem pkexec a janela manda o comando para o terminal"
+assert_exit_code 0 python3 "$qd_harness" spawn_failed
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-08
+test_case_start "T2_F10_08" "Argumentos preservam o resumo e recusam id inválido"
+assert_exit_code 0 python3 "$qd_harness" args
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-09
+test_case_start "T2_F10_09" "Segunda janela do mesmo caso sai sem abrir"
+assert_exit_code 0 python3 "$qd_harness" trava
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-10
+test_case_start "T2_F10_10" "O módulo da janela não importa gi no topo"
+assert_exit_code 0 python3 "$qd_harness" sem_gi
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
 # Finaliza a suíte
 suite_finish
