@@ -116,8 +116,119 @@ def lock_path(case_id: str) -> str:
     return os.path.join(runtime, f"lumen-quarentena-{case_id}.lock")
 
 
+CSS = b".malicioso { color: #c01c28; font-weight: bold; }"
+
+LABELS = {
+    "confiar": "Confio (pede senha)",
+    "analisar": "Analisar",
+    "manter": "Manter isolado",
+}
+
+
 def run_window(args: argparse.Namespace) -> int:
-    raise NotImplementedError  # a janela GTK4 vem na Task 2
+    """Janela GTK4 de decisão. `gi` é importado aqui para o módulo seguir importável sem GTK."""
+    import gi
+    gi.require_version("Gdk", "4.0")
+    gi.require_version("Gtk", "4.0")
+    from gi.repository import Gdk, Gio, GLib, Gtk
+
+    cmds = commands(args.id)
+
+    def on_activate(app):
+        window = Gtk.ApplicationWindow(application=app)
+        window.set_title("Arquivo isolado pelo Mandacaru")
+        window.set_default_size(420, -1)
+
+        provider = Gtk.CssProvider()
+        if hasattr(provider, "load_from_string"):
+            provider.load_from_string(CSS.decode())
+        else:
+            provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        for side in ("top", "bottom", "start", "end"):
+            getattr(box, f"set_margin_{side}")(18)
+        window.set_child(box)
+
+        def make_label(text, selectable=False):
+            label = Gtk.Label()
+            label.set_text(text)
+            label.set_wrap(True)
+            label.set_xalign(0)
+            label.set_selectable(selectable)
+            box.append(label)
+            return label
+
+        make_label(args.rule)
+        make_label(args.summary, selectable=True)
+        make_label("Se você não decidir, o arquivo é apagado em 30 dias.")
+        status = make_label("")
+        spinner = Gtk.Spinner()
+        box.append(spinner)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.set_halign(Gtk.Align.END)
+        box.append(row)
+        buttons = {}
+        for action in INITIAL_BUTTONS:  # ordem: confiar, analisar, manter
+            button = Gtk.Button(label=LABELS[action])
+            row.append(button)
+            buttons[action] = button
+        window.set_default_widget(buttons["manter"])
+
+        state = {"current": INITIAL_BUTTONS}
+
+        def close_window():
+            window.close()
+            return GLib.SOURCE_REMOVE
+
+        def apply(result):
+            spinner.stop()
+            status.set_text(result.message)
+            if result.verdict == "malicioso":
+                status.add_css_class("malicioso")
+            else:
+                status.remove_css_class("malicioso")
+            state["current"] = result.buttons
+            for name, button in buttons.items():
+                button.set_sensitive(name in result.buttons)
+            if result.close:
+                GLib.timeout_add(CLOSE_MS, close_window)
+
+        def on_done(proc, res, action, before):
+            try:
+                _ok, out, err = proc.communicate_utf8_finish(res)
+                rc = proc.get_exit_status() if proc.get_if_exited() else -1
+            except GLib.Error:
+                out, err, rc = "", "", -1
+            apply(outcome(action, rc, out or "", err or "", before))
+
+        def on_click(_button, action):
+            before = state["current"]
+            for button in buttons.values():
+                button.set_sensitive(False)
+            spinner.start()
+            status.remove_css_class("malicioso")
+            status.set_text("Aguardando…")
+            try:
+                proc = Gio.Subprocess.new(
+                    cmds[action],
+                    Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
+            except GLib.Error:
+                apply(spawn_failed(action, args.id, before))
+                return
+            proc.communicate_utf8_async(None, None, on_done, action, before)
+
+        for action, button in buttons.items():
+            button.connect("clicked", on_click, action)
+        window.present()
+
+    app = Gtk.Application(application_id="io.github.vandyckln.lumen.quarentena",
+                          flags=Gio.ApplicationFlags.NON_UNIQUE)
+    app.connect("activate", on_activate)
+    return app.run([])
 
 
 def main(argv: list[str] | None = None) -> int:
