@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import deque
 from typing import Any
 
 from .quarantine_dialog import valid_id
@@ -42,6 +43,11 @@ DIALOG_CMD: list[str] = [sys.executable, "-m", "shell.quarantine_dialog"]
 _children: list[subprocess.Popen] = []
 _ringing = threading.Event()  # um toque por vez: alerta novo durante um toque não sobrepõe
 _warned: set[str] = set()
+# ids de casos já anunciados (últimos ANNOUNCED_MAX): um arquivo que casa N regras chega
+# como N alertas com o mesmo id, mas a pergunta só pode aparecer uma vez
+ANNOUNCED_MAX = 256
+_announced_order: deque[str] = deque()
+_announced: set[str] = set()
 
 
 def _warn_once(key: str, msg: str) -> None:
@@ -67,6 +73,17 @@ def parse_alert(line: bytes) -> dict | None:
 
 def should_notify(alert: dict, min_severity: str) -> bool:
     return SEVERITIES.index(alert["severity"]) >= SEVERITIES.index(min_severity)
+
+
+def _first_announcement(case_id: str) -> bool:
+    """True na primeira vez que o caso aparece; guarda só os últimos ANNOUNCED_MAX ids."""
+    if case_id in _announced:
+        return False
+    _announced.add(case_id)
+    _announced_order.append(case_id)
+    if len(_announced_order) > ANNOUNCED_MAX:
+        _announced.discard(_announced_order.popleft())
+    return True
 
 
 def _reap() -> None:
@@ -240,7 +257,15 @@ def run(socket_path: str, min_severity: str, sound_enabled: bool, stop: threadin
         try:
             for line in _read_alerts(conn, stop, got_data):
                 alert = parse_alert(line)
-                if alert and should_notify(alert, min_severity):
+                if not alert:
+                    continue
+                case_id = alert.get("quarantine_id")
+                if valid_id(case_id):
+                    # arquivo já isolado: toda decisão pendente vira pergunta, qualquer que
+                    # seja o limiar, mas uma vez só por caso
+                    if _first_announcement(case_id):
+                        notify(alert, sound_enabled)
+                elif should_notify(alert, min_severity):
                     notify(alert, sound_enabled)
         finally:
             conn.close()

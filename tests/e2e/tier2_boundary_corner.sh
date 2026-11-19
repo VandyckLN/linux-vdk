@@ -931,6 +931,26 @@ run_edr clique
 assert_eq "0" "$(conta '^lumen-quarentena ')" "Alerta sem id só silencia"
 test_case_end
 
+# T2-F9-26
+test_case_start "T2_F9_26" "Alerta com id válido abaixo do limiar ainda avisa e abre a janela no clique"
+run_edr id_abaixo_limiar
+assert_eq "1" "$(conta '^notify-send .*arquivo isolado \(LOW\)')" "Popup do isolado apesar do limiar CRITICAL"
+assert_eq "1" "$(conta '^lumen-quarentena ')" "Clique abre a janela"
+test_case_end
+
+# T2-F9-27
+test_case_start "T2_F9_27" "Alerta sem id abaixo do limiar continua quieto"
+run_edr sem_id_abaixo_limiar
+assert_not_contains "$LAST_CMD_OUTPUT" "notify-send|pw-play" "LOW sem id com limiar CRITICAL"
+test_case_end
+
+# T2-F9-28
+test_case_start "T2_F9_28" "Dois alertas com o mesmo id geram um popup só"
+run_edr id_repetido
+assert_eq "1" "$(conta '^notify-send ')" "Um popup por caso"
+assert_eq "1" "$(conta '^lumen-quarentena ')" "Uma janela por caso"
+test_case_end
+
 # ==============================================================================
 # FUNCIONALIDADE F10: Lógica da janela de decisão da quarentena (sem GTK)
 # ==============================================================================
@@ -993,6 +1013,12 @@ test_case_end
 # T2-F10-10
 test_case_start "T2_F10_10" "O módulo da janela não importa gi no topo"
 assert_exit_code 0 python3 "$qd_harness" sem_gi
+assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
+test_case_end
+
+# T2-F10-11
+test_case_start "T2_F10_11" "Confio sem saída não deixa espaço sobrando; v true não vale como 1"
+assert_exit_code 0 python3 "$qd_harness" outcome_bordas
 assert_not_contains "$LAST_CMD_OUTPUT" "FALHA" "Nenhuma verificação falhou"
 test_case_end
 

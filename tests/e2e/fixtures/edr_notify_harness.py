@@ -50,6 +50,11 @@ CASOS = {
     "id_markup": ([alerta(summary="-x Tom & <b>y</b>", quarantine_id=ID)], "MEDIUM"),
     "id_traco": ([alerta(summary="--help", quarantine_id=ID)], "MEDIUM"),
     "id_medium": ([alerta("MEDIUM", quarantine_id=ID)], "MEDIUM"),
+    # id valido abaixo do limiar: o Mandacaru ja isolou o arquivo, a pergunta nao pode sumir
+    "id_abaixo_limiar": ([alerta("LOW", quarantine_id=ID)], "CRITICAL"),
+    "sem_id_abaixo_limiar": ([alerta("LOW")], "CRITICAL"),
+    # mesmo arquivo casando duas regras: dois alertas com o mesmo id, um popup so
+    "id_repetido": ([alerta(quarantine_id=ID), alerta("MEDIUM", quarantine_id=ID)], "MEDIUM"),
 }
 
 # Como os falsos se comportam em cada caso. Padrão: o popup fica aberto 3 s (como um
@@ -69,6 +74,9 @@ AMBIENTE = {
     "id_markup": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
     "id_traco": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
     "id_medium": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "id_abaixo_limiar": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "sem_id_abaixo_limiar": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "id_repetido": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
 }
 # teto de cada pw-play no harness; no clique ele é alto para provar que quem parou foi o clique
 TETO = {"clique": 5.0}
