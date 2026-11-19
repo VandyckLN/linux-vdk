@@ -433,6 +433,29 @@ PYEOF
 assert_eq "ok" "$guard_out" "ISO nunca sai com o EDR velho ou sem o aviso"
 test_case_end
 
+test_case_start "T3_PAIR9_LOCK_ATENDE_DEPENDS" "O Mandacaru do lock atende o mínimo exigido pelo lumen-desktop"
+# Depends acima do lock = apt-get install -y lumen-desktop insatisfeito e ISO que não monta.
+lockdep_out="$(python3 -I - "${WORKSPACE_ROOT}" <<'PYEOF' 2>&1
+import re
+import sys
+root = sys.argv[1]
+lock = open(f"{root}/packaging/third-party/mandacaru.lock", encoding="utf-8").read()
+m = re.search(r"^MANDACARU_VERSION=([0-9.]+)$", lock, re.M)
+ver = tuple(int(x) for x in m.group(1).split(".")) if m else None
+erros = []
+for arq in ("packaging/build-debs.sh", "packaging/debian/control"):
+    mins = re.findall(r"mandacaru \(>= ([0-9.]+)\)", open(f"{root}/{arq}", encoding="utf-8").read())
+    if not mins:
+        erros.append(f"{arq}: sem mandacaru (>= ...)")
+    for v in mins:
+        if ver is None or ver < tuple(int(x) for x in v.split(".")):
+            erros.append(f"{arq}: exige {v}, lock tem {m.group(1) if m else 'nada'}")
+print("ok" if not erros else "; ".join(erros))
+PYEOF
+)"
+assert_eq "ok" "$lockdep_out" "Lock e Depends coerentes"
+test_case_end
+
 test_case_start "T3_PAIR9_USERMOD_FORA_DO_IF" "A live entra no grupo mandacaru mesmo com usuário já existente"
 um_out="$(python3 -I - "${WORKSPACE_ROOT}/scripts/build-iso.sh" <<'PYEOF' 2>&1
 import sys
