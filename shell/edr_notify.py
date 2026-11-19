@@ -118,6 +118,7 @@ def _ring(sound: str, max_play: float, popup: subprocess.Popen | None) -> None:
         _ringing.clear()
 
 
+# "--opcao=valor" (e não duas palavras): um valor que começa com "-" não vira opção do argparse
 def _open_on_click(popup: subprocess.Popen, case_id: str, rule: str, summary: str) -> None:
     """Espera o popup fechar; só a saída exata "default" (clique na ação) abre a janela."""
     try:
@@ -128,7 +129,7 @@ def _open_on_click(popup: subprocess.Popen, case_id: str, rule: str, summary: st
     finally:
         popup.stdout.close()
     if out.decode(errors="replace").strip() == "default":
-        _spawn([*DIALOG_CMD, case_id, "--rule", rule, "--summary", summary])
+        _spawn([*DIALOG_CMD, case_id, f"--rule={rule}", f"--summary={summary}"])
 
 
 def notify(alert: dict, sound_enabled: bool) -> None:

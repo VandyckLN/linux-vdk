@@ -889,7 +889,7 @@ test_case_end
 test_case_start "T2_F9_19" "Clique num alerta com id abre a janela de decisão"
 run_edr id_clique
 assert_contains "$LAST_CMD_OUTPUT" "notify-send --app-name=Mandacaru --icon=mandacaru --urgency=critical --wait --action=default=O que fazer\? -- Mandacaru: arquivo isolado \(HIGH\) behavior\.revshell: " "Popup do arquivo isolado"
-assert_contains "$LAST_CMD_OUTPUT" "lumen-quarentena abababababababababababababababab --rule behavior\.revshell --summary Shell bash com conexao de rede ativa" "Janela aberta com id, regra e resumo"
+assert_contains "$LAST_CMD_OUTPUT" "lumen-quarentena abababababababababababababababab --rule=behavior\.revshell --summary=Shell bash com conexao de rede ativa" "Janela aberta com id, regra e resumo"
 test_case_end
 
 # T2-F9-20
@@ -909,7 +909,14 @@ test_case_end
 test_case_start "T2_F9_22" "Resumo com markup e traço: escapado no popup, cru na janela"
 run_edr id_markup
 assert_contains "$LAST_CMD_OUTPUT" "Tom &amp; &lt;b&gt;y&lt;/b&gt;" "Corpo do popup escapado"
-assert_contains "$LAST_CMD_OUTPUT" "--summary -x Tom & <b>y</b>" "Janela recebe o texto cru"
+assert_contains "$LAST_CMD_OUTPUT" "--summary=-x Tom & <b>y</b>" "Janela recebe o texto cru"
+assert_contains "$LAST_CMD_OUTPUT" "dialog_parse=abababababababababababababababab\|behavior\.revshell\|-x Tom & <b>y</b>" "O argparse da janela aceita o argv e devolve o resumo intacto"
+test_case_end
+
+# T2-F9-25
+test_case_start "T2_F9_25" "Resumo sem espaço começando com traço chega inteiro à janela"
+run_edr id_traco
+assert_contains "$LAST_CMD_OUTPUT" "dialog_parse=abababababababababababababababab\|behavior\.revshell\|--help" "Nada de 'expected one argument'"
 test_case_end
 
 # T2-F9-23

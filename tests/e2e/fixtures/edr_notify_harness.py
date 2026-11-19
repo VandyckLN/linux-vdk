@@ -48,6 +48,7 @@ CASOS = {
     "dismiss": ([alerta(quarantine_id=ID)], "MEDIUM"),
     "id_invalido": ([alerta(quarantine_id="../../etc"), alerta(quarantine_id="AB" * 16)], "MEDIUM"),
     "id_markup": ([alerta(summary="-x Tom & <b>y</b>", quarantine_id=ID)], "MEDIUM"),
+    "id_traco": ([alerta(summary="--help", quarantine_id=ID)], "MEDIUM"),
     "id_medium": ([alerta("MEDIUM", quarantine_id=ID)], "MEDIUM"),
 }
 
@@ -66,6 +67,7 @@ AMBIENTE = {
     "dismiss": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": ""},
     "id_invalido": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
     "id_markup": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
+    "id_traco": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
     "id_medium": {"NOTIFY_SLEEP": "0.1", "NOTIFY_OUT": "default"},
 }
 # teto de cada pw-play no harness; no clique ele é alto para provar que quem parou foi o clique
@@ -91,7 +93,8 @@ def fakes(base, com_pwplay=True):
     # janela de decisão falsa: só registra a chamada
     dlg = os.path.join(bindir, "lumen-quarentena")
     with open(dlg, "w") as fh:
-        fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n')
+        fh.write(f'#!/bin/sh\necho "${{0##*/}} $*" >> "{log}"\n'
+                 f'printf \'%s\\0\' "$@" >> "{base}/dialog.argv"\n')
     os.chmod(dlg, 0o755)
     edr_notify.DIALOG_CMD = [dlg]
     os.environ["PATH"] = bindir  # so os falsos: um pw-play real do host nao pode atrapalhar
@@ -233,6 +236,16 @@ def main():
     if t.is_alive():
         print("o vigia nao parou com o stop", file=sys.stderr)
         return 3
+    argv_file = os.path.join(base, "dialog.argv")
+    if os.path.exists(argv_file):
+        # o argv exato que o vigia montou tem de passar pelo argparse da janela
+        from shell import quarantine_dialog
+        argv = open(argv_file).read().split("\0")[:-1]
+        try:
+            a = quarantine_dialog.parse_args(argv)
+            print(f"dialog_parse={a.id}|{a.rule}|{a.summary}")
+        except SystemExit as exc:
+            print(f"dialog_parse=ERRO{exc.code}")
     if os.path.exists(log):
         with open(log) as fh:
             sys.stdout.write(fh.read())
